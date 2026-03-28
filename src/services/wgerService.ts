@@ -101,6 +101,38 @@ export const wgerService = {
     }
   },
 
+  fetchExerciseMedia: async (name: string, category: string): Promise<string | null> => {
+    try {
+      console.log(`Fetching media for: ${name} (${category})`);
+      const prompt = `Find a direct URL to a high-quality GIF or image for the exercise "${name}" (Category: ${category}). 
+      The URL must be a direct link to an image or GIF file (e.g., ending in .gif, .jpg, .png).
+      Prefer reliable fitness sources.
+      Return the result as a JSON object with a single field "mediaUrl".`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              mediaUrl: { type: Type.STRING }
+            },
+            required: ["mediaUrl"]
+          }
+        }
+      });
+
+      const result = JSON.parse(response.text || "{}");
+      return result.mediaUrl || null;
+    } catch (error) {
+      console.error("Fetch Media Error:", error);
+      return null;
+    }
+  },
+
   getExerciseImage: (exercise: WgerExercise): string | undefined => {
     return exercise.gifUrl || (exercise.images && exercise.images[0]);
   }

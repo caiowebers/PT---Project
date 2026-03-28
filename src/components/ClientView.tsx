@@ -95,7 +95,7 @@ export default function ClientView() {
         particleCount: 150,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ["#39FF14", "#FF5F1F", "#ffffff"]
+        colors: ["#00FF00", "#FF5F1F", "#ffffff"]
       });
     }
   };
@@ -183,7 +183,7 @@ export default function ClientView() {
                       itemStyle={{ padding: '0' }}
                     />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                    <Line type="monotone" dataKey="weight" name="Peso" stroke="#39FF14" strokeWidth={2} dot={{ r: 4, fill: '#39FF14' }} />
+                    <Line type="monotone" dataKey="weight" name="Peso" stroke="#00FF00" strokeWidth={2} dot={{ r: 4, fill: '#00FF00' }} />
                     <Line type="monotone" dataKey="bodyFat" name="% Gordura" stroke="#FF5F1F" strokeWidth={2} dot={{ r: 4, fill: '#FF5F1F' }} />
                     <Line type="monotone" dataKey="muscleMass" name="Massa Muscular" stroke="#00D1FF" strokeWidth={2} dot={{ r: 4, fill: '#00D1FF' }} />
                   </LineChart>

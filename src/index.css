@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-  --color-neon-green: #39FF14;
+  --color-neon-green: #00FF00;
   --color-neon-orange: #FF5F1F;
   --color-gym-dark: #0A0A0A;
-  --color-gym-card: #141414;
-  --color-gym-border: #262626;
+  --color-gym-card: #2A2A2A;
+  --color-gym-border: #333333;
 }
 
 @layer base {

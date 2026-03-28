@@ -30,7 +30,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, isCompleted, onTo
             : "border-gym-border hover:border-neon-green/50"
         }`}
       >
-        {isCompleted ? <CheckCircle2 className="w-6 h-6" /> : <div className="w-2 h-2 rounded-full bg-white/20" />}
+        {isCompleted ? <CheckCircle2 className="w-6 h-6" /> : <div className="w-2 h-2 rounded-full bg-white/10" />}
       </button>
 
       <div className="flex-1 min-w-0">
