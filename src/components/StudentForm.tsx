@@ -86,7 +86,7 @@ export default function StudentForm() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <button 
           onClick={() => navigate("/admin")}
@@ -258,29 +258,44 @@ export default function StudentForm() {
                 <p className="text-gray-500">Nenhum treino criado ainda.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {student.workouts?.map((workout, idx) => (
-                  <div key={workout.id} className="p-4 border rounded-xl border-gym-border bg-black/40">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-bold text-neon-green">{workout.name}</h4>
-                      <button 
-                        onClick={() => removeWorkout(workout.id)}
-                        className="text-red-500/50 hover:text-red-500 transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+              <div className="space-y-6">
+                {student.workouts?.map((workout, idx) => {
+                  const colors = [
+                    "border-neon-green/30 shadow-neon-green/5",
+                    "border-blue-400/30 shadow-blue-400/5",
+                    "border-neon-orange/30 shadow-neon-orange/5",
+                    "border-purple-400/30 shadow-purple-400/5"
+                  ];
+                  const accentColor = colors[idx % colors.length];
+                  
+                  return (
+                    <div key={workout.id} className={`p-6 border rounded-2xl bg-black/40 shadow-xl transition-all ${accentColor}`}>
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg ${accentColor.split(' ')[0].replace('border-', 'bg-').replace('/30', '')} text-black`}>
+                            {workout.name.split(' ')[1] || workout.name[0]}
+                          </div>
+                          <h4 className="font-black text-xl tracking-tight">{workout.name}</h4>
+                        </div>
+                        <button 
+                          onClick={() => removeWorkout(workout.id)}
+                          className="p-2 text-red-500/30 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <WorkoutEditor 
+                        workout={workout} 
+                        onUpdate={(updatedWorkout) => {
+                          const newWorkouts = student.workouts?.map(w => 
+                            w.id === updatedWorkout.id ? updatedWorkout : w
+                          );
+                          setStudent(prev => ({ ...prev, workouts: newWorkouts }));
+                        }} 
+                      />
                     </div>
-                    <WorkoutEditor 
-                      workout={workout} 
-                      onUpdate={(updatedWorkout) => {
-                        const newWorkouts = student.workouts?.map(w => 
-                          w.id === updatedWorkout.id ? updatedWorkout : w
-                        );
-                        setStudent(prev => ({ ...prev, workouts: newWorkouts }));
-                      }} 
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

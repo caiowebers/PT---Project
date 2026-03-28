@@ -75,19 +75,19 @@ export const storageService = {
           exercises: [
             {
               id: uuidv4(),
-              name: "Supino Reto",
+              name: "Bench Press",
               category: "Principal",
               reps: "3x12",
               rest: "60s",
-              gifUrl: "https://wger.de/media/exercise-images/192/Bench-press-1.png"
+              gifUrl: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Bench_Press/0.jpg"
             },
             {
               id: uuidv4(),
-              name: "Puxada Frontal",
+              name: "Lat Pulldown",
               category: "Principal",
               reps: "3x12",
               rest: "60s",
-              gifUrl: "https://wger.de/media/exercise-images/158/Lat-pulldown-1.png"
+              gifUrl: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Lat_Pulldown/0.jpg"
             }
           ]
         }
