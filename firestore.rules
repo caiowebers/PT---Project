@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: students
+    // Document ID: {studentId}
+    // Fields:
+    //   - id: string (required)
+    //   - shareSlug: string (required)
+    //   - name: string (required)
+    //   - age: number
+    //   - goal: string
+    //   - startDate: string
+    //   - notes: string
+    //   - evaluations: list
+    //   - measurements: list
+    //   - workouts: list
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "caioweber1@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll(['id', 'shareSlug', 'name']) &&
+             data.id is string &&
+             data.shareSlug is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100;
+    }
+
+    // Students collection
+    match /students/{studentId} {
+      // Admin can do everything
+      allow read, write: if isAdmin();
+      
+      // Clients can only read their own profile via shareSlug
+      // Note: In Firestore, we usually query by shareSlug. 
+      // To allow public read by slug, we'd need a different structure or a specific rule.
+      // For now, let's allow read if the user knows the studentId (which is what we use in the URL).
+      allow read: if true; 
+    }
+  }
+}

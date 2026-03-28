@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "Student": {
+      "title": "Student",
+      "description": "A student profile with their workout plans and measurements.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shareSlug": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "number" },
+        "goal": { "type": "string" },
+        "startDate": { "type": "string" },
+        "notes": { "type": "string" },
+        "evaluations": { "type": "array" },
+        "measurements": { "type": "array" },
+        "workouts": { "type": "array" }
+      },
+      "required": ["id", "shareSlug", "name"]
+    }
+  },
+  "firestore": {
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Collection of students managed by the admin."
+    }
+  }
+}

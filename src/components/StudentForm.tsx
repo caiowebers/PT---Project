@@ -30,19 +30,22 @@ export default function StudentForm() {
   const [currentMeas, setCurrentMeas] = useState<Partial<BodyMeasurements>>({});
 
   useEffect(() => {
-    if (isEdit) {
-      const existing = storageService.getStudentById(id);
-      if (existing) {
-        setStudent(existing);
-        if (existing.evaluations.length > 0) setCurrentEval(existing.evaluations[existing.evaluations.length - 1]);
-        if (existing.measurements.length > 0) setCurrentMeas(existing.measurements[existing.measurements.length - 1]);
+    const fetchStudent = async () => {
+      if (isEdit && id) {
+        const existing = await storageService.getStudentById(id);
+        if (existing) {
+          setStudent(existing);
+          if (existing.evaluations.length > 0) setCurrentEval(existing.evaluations[existing.evaluations.length - 1]);
+          if (existing.measurements.length > 0) setCurrentMeas(existing.measurements[existing.measurements.length - 1]);
+        }
       }
-    }
+    };
+    fetchStudent();
   }, [id, isEdit]);
 
   const [activeTab, setActiveTab] = useState<"profile" | "physical" | "workouts">("profile");
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!student.name) {
       alert("Por favor, insira o nome do aluno.");
       return;
@@ -54,7 +57,7 @@ export default function StudentForm() {
       measurements: [...(student.measurements || []), { ...currentMeas, date: new Date().toISOString() } as BodyMeasurements]
     } as Student;
 
-    storageService.saveStudent(studentToSave);
+    await storageService.saveStudent(studentToSave);
     toast.success("Dados do aluno guardados com sucesso!");
     navigate("/admin");
   };

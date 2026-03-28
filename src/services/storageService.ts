@@ -1,39 +1,79 @@
 import { Student } from "../types";
+import { db, handleFirestoreError, OperationType } from "../firebase";
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  deleteDoc, 
+  query, 
+  where,
+  onSnapshot
+} from "firebase/firestore";
 
-const STORAGE_KEY = "gymflow_students";
+const COLLECTION = "students";
 
 export const storageService = {
-  getStudents: (): Student[] => {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  },
-
-  getStudentById: (id: string): Student | undefined => {
-    const students = storageService.getStudents();
-    return students.find(s => s.id === id);
-  },
-
-  getStudentBySlug: (slug: string): Student | undefined => {
-    const students = storageService.getStudents();
-    return students.find(s => s.shareSlug === slug);
-  },
-
-  saveStudent: (student: Student) => {
-    const students = storageService.getStudents();
-    const index = students.findIndex(s => s.id === student.id);
-    
-    if (index >= 0) {
-      students[index] = student;
-    } else {
-      students.push(student);
+  getStudents: async (): Promise<Student[]> => {
+    try {
+      const querySnapshot = await getDocs(collection(db, COLLECTION));
+      return querySnapshot.docs.map(doc => doc.data() as Student);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, COLLECTION);
+      return [];
     }
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
   },
 
-  deleteStudent: (id: string) => {
-    const students = storageService.getStudents();
-    const filtered = students.filter(s => s.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  getStudentById: async (id: string): Promise<Student | undefined> => {
+    try {
+      const docRef = doc(db, COLLECTION, id);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? (docSnap.data() as Student) : undefined;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `${COLLECTION}/${id}`);
+      return undefined;
+    }
+  },
+
+  getStudentBySlug: async (slug: string): Promise<Student | undefined> => {
+    try {
+      const q = query(collection(db, COLLECTION), where("shareSlug", "==", slug));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data() as Student;
+      }
+      return undefined;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `${COLLECTION}?shareSlug=${slug}`);
+      return undefined;
+    }
+  },
+
+  saveStudent: async (student: Student) => {
+    try {
+      const docRef = doc(db, COLLECTION, student.id);
+      await setDoc(docRef, student);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${student.id}`);
+    }
+  },
+
+  deleteStudent: async (id: string) => {
+    try {
+      const docRef = doc(db, COLLECTION, id);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `${COLLECTION}/${id}`);
+    }
+  },
+
+  subscribeToStudents: (callback: (students: Student[]) => void) => {
+    return onSnapshot(collection(db, COLLECTION), (snapshot) => {
+      const students = snapshot.docs.map(doc => doc.data() as Student);
+      callback(students);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, COLLECTION);
+    });
   }
 };

@@ -17,13 +17,15 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    setStudents(storageService.getStudents());
+    const unsubscribe = storageService.subscribeToStudents((data) => {
+      setStudents(data);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm("Tem a certeza que deseja remover este aluno?")) {
-      storageService.deleteStudent(id);
-      setStudents(storageService.getStudents());
+      await storageService.deleteStudent(id);
       toast.success("Aluno removido com sucesso");
     }
   };

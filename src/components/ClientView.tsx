@@ -25,14 +25,28 @@ export default function ClientView() {
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [showMetrics, setShowMetrics] = useState(false);
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    if (shareSlug) {
-      const data = storageService.getStudentBySlug(shareSlug);
-      if (data) {
-        setStudent(data);
+    const fetchStudent = async () => {
+      if (shareSlug) {
+        setLoading(true);
+        const data = await storageService.getStudentBySlug(shareSlug);
+        if (data) {
+          setStudent(data);
+        }
+        setLoading(false);
       }
-    }
+    };
+    fetchStudent();
   }, [shareSlug]);
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
+      <div className="w-12 h-12 border-4 border-neon-green border-t-transparent rounded-full animate-spin mb-4" />
+      <p className="text-gray-500">A carregar o teu plano de treino...</p>
+    </div>
+  );
 
   if (!student) return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
