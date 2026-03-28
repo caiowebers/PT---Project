@@ -33,9 +33,18 @@ export default function Login({ onLogin }: LoginProps) {
         toast.error("Acesso negado. Apenas o administrador pode entrar.");
         await auth.signOut();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao entrar com Google:", error);
-      toast.error("Falha na autenticação com Google.");
+      const errorCode = error.code || "unknown";
+      const errorMessage = error.message || "Erro desconhecido";
+      
+      if (errorCode === "auth/unauthorized-domain") {
+        toast.error(`Domínio não autorizado (${window.location.hostname}). Por favor, adicione este domínio na consola Firebase.`);
+      } else if (errorCode === "auth/popup-blocked") {
+        toast.error("O popup foi bloqueado pelo seu navegador. Por favor, permita popups para este site.");
+      } else {
+        toast.error(`Falha na autenticação: ${errorCode}`);
+      }
     } finally {
       setLoading(false);
     }
