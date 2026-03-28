@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Plus, Trash2, GripVertical, Image as ImageIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, GripVertical, Image as ImageIcon, Search, Loader2 } from "lucide-react";
 import { Exercise, Workout } from "../types";
 import { v4 as uuidv4 } from "uuid";
+import { wgerService, WgerExercise } from "../services/wgerService";
 
 interface WorkoutEditorProps {
   workout: Workout;
@@ -9,6 +10,10 @@ interface WorkoutEditorProps {
 }
 
 export default function WorkoutEditor({ workout, onUpdate }: WorkoutEditorProps) {
+  const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
+  const [suggestions, setSuggestions] = useState<Record<string, WgerExercise[]>>({});
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+
   const addExercise = () => {
     const newExercise: Exercise = {
       id: uuidv4(),
@@ -32,22 +37,95 @@ export default function WorkoutEditor({ workout, onUpdate }: WorkoutEditorProps)
     onUpdate({ ...workout, exercises: workout.exercises.filter(e => e.id !== id) });
   };
 
+  const handleSearch = async (id: string, term: string) => {
+    setSearchTerms(prev => ({ ...prev, [id]: term }));
+    
+    if (term.length < 2) {
+      setSuggestions(prev => ({ ...prev, [id]: [] }));
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, [id]: true }));
+    
+    // Debounce logic could be added here, but for now let's just make sure the search is robust
+    try {
+      const results = await wgerService.searchExercises(term);
+      setSuggestions(prev => ({ ...prev, [id]: results }));
+    } catch (error) {
+      console.error("Search error:", error);
+      setSuggestions(prev => ({ ...prev, [id]: [] }));
+    } finally {
+      setLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const selectSuggestion = (id: string, suggestion: WgerExercise) => {
+    const imageUrl = wgerService.getExerciseImage(suggestion);
+    updateExercise(id, { 
+      name: suggestion.name, 
+      gifUrl: imageUrl || "" 
+    });
+    setSuggestions(prev => ({ ...prev, [id]: [] }));
+    setSearchTerms(prev => ({ ...prev, [id]: suggestion.name })); // Keep the name in the input
+  };
+
   const categories = ["Ativação", "Aquecimento", "Principal", "Abdominais", "Alongamentos"] as const;
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3">
         {workout.exercises.map((exercise, idx) => (
-          <div key={exercise.id} className="p-4 rounded-lg bg-white/5 border border-gym-border space-y-4">
+          <div key={exercise.id} className="p-4 rounded-lg bg-white/5 border border-gym-border space-y-4 relative">
             <div className="flex items-center gap-3">
               <GripVertical className="w-5 h-5 text-gray-600 cursor-grab" />
-              <input 
-                type="text" 
-                value={exercise.name}
-                onChange={e => updateExercise(exercise.id, { name: e.target.value })}
-                placeholder="Nome do Exercício"
-                className="flex-1 bg-transparent border-b border-gym-border focus:border-neon-green outline-hidden font-bold"
-              />
+              <div className="flex-1 relative">
+                <div className="relative">
+                  <Search className="absolute w-4 h-4 text-gray-500 -translate-y-1/2 left-3 top-1/2" />
+                  <input 
+                    type="text" 
+                    value={searchTerms[exercise.id] !== undefined ? searchTerms[exercise.id] : exercise.name}
+                    onChange={e => handleSearch(exercise.id, e.target.value)}
+                    placeholder="Pesquisar exercício (ex: Bench Press)..."
+                    className="w-full bg-black border border-gym-border rounded-lg py-2 pl-9 pr-4 focus:border-neon-green outline-hidden font-bold text-sm"
+                  />
+                  {loading[exercise.id] && (
+                    <Loader2 className="absolute w-4 h-4 text-neon-green -translate-y-1/2 right-3 top-1/2 animate-spin" />
+                  )}
+                </div>
+
+                {/* Suggestions Dropdown */}
+                {(suggestions[exercise.id]?.length > 0 || (searchTerms[exercise.id]?.length >= 2 && !loading[exercise.id])) && (
+                  <div className="absolute z-50 w-full mt-1 bg-gym-card border border-gym-border rounded-lg shadow-2xl max-h-60 overflow-y-auto">
+                    {suggestions[exercise.id]?.length > 0 ? (
+                      suggestions[exercise.id].map(s => (
+                        <button
+                          key={s.id}
+                          onClick={() => selectSuggestion(exercise.id, s)}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-white/5 text-left border-b border-gym-border last:border-0"
+                        >
+                          {wgerService.getExerciseImage(s) ? (
+                            <img 
+                              src={wgerService.getExerciseImage(s)} 
+                              className="w-10 h-10 rounded object-cover border border-gym-border" 
+                              alt={s.name}
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center border border-gym-border">
+                              <ImageIcon className="w-4 h-4 text-gray-600" />
+                            </div>
+                          )}
+                          <span className="text-sm font-bold">{s.name}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        Nenhum exercício encontrado para "{searchTerms[exercise.id]}"
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <button 
                 onClick={() => removeExercise(exercise.id)}
                 className="text-red-500/30 hover:text-red-500"
@@ -86,7 +164,7 @@ export default function WorkoutEditor({ workout, onUpdate }: WorkoutEditorProps)
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] uppercase text-gray-500 font-bold">GIF URL</label>
+                <label className="text-[10px] uppercase text-gray-500 font-bold">GIF/Imagem URL</label>
                 <div className="flex gap-2">
                   <input 
                     type="text" 

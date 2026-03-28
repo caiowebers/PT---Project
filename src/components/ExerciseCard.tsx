@@ -1,3 +1,4 @@
+import React from "react";
 import { CheckCircle2 } from "lucide-react";
 import { motion } from "motion/react";
 import { Exercise } from "../types";
@@ -8,7 +9,7 @@ interface ExerciseCardProps {
   onToggle: () => void;
 }
 
-export default function ExerciseCard({ exercise, isCompleted, onToggle }: ExerciseCardProps) {
+const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, isCompleted, onToggle }) => {
   return (
     <motion.div 
       layout
@@ -47,4 +48,6 @@ export default function ExerciseCard({ exercise, isCompleted, onToggle }: Exerci
       )}
     </motion.div>
   );
-}
+};
+
+export default ExerciseCard;
