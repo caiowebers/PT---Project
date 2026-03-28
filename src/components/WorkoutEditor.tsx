@@ -345,6 +345,19 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     }
   }, [highlightedId]);
 
+  const handleWorkoutUpdate = (updatedWorkout: Workout) => {
+    onUpdate({
+      ...updatedWorkout,
+      lastUpdated: new Date().toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    });
+  };
+
   const addExercise = (name: any = "") => {
     const newId = uuidv4();
     const exerciseName = typeof name === 'string' ? name : "";
@@ -356,7 +369,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
       rest: "60s",
       gifUrl: ""
     };
-    onUpdate({ ...workout, exercises: [...workout.exercises, newExercise] });
+    handleWorkoutUpdate({ ...workout, exercises: [...workout.exercises, newExercise] });
     
     if (exerciseName) {
       // Set search term for the new item so it shows up
@@ -391,7 +404,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
         ...ex,
         id: uuidv4()
       } as Exercise));
-      onUpdate({ ...workout, exercises: [...workout.exercises, ...newExercises] });
+      handleWorkoutUpdate({ ...workout, exercises: [...workout.exercises, ...newExercises] });
     }
   };
 
@@ -406,7 +419,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     const newExercises = [...workout.exercises];
     newExercises.splice(originalIndex + 1, 0, newExercise);
     
-    onUpdate({ ...workout, exercises: newExercises });
+    handleWorkoutUpdate({ ...workout, exercises: newExercises });
     setHighlightedId(newId);
   };
 
@@ -414,11 +427,11 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     const newExercises = workout.exercises.map(e => 
       e.id === id ? { ...e, ...updates } : e
     );
-    onUpdate({ ...workout, exercises: newExercises });
+    handleWorkoutUpdate({ ...workout, exercises: newExercises });
   };
 
   const removeExercise = (id: string) => {
-    onUpdate({ ...workout, exercises: workout.exercises.filter(e => e.id !== id) });
+    handleWorkoutUpdate({ ...workout, exercises: workout.exercises.filter(e => e.id !== id) });
   };
 
   const fetchMissingMedia = async () => {
@@ -443,7 +456,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
         }
       }
 
-      onUpdate({ ...workout, exercises: updatedExercises });
+      handleWorkoutUpdate({ ...workout, exercises: updatedExercises });
       toast.success(`Mídias atualizadas!`, {
         id: toastId,
         description: `${successCount} novos GIFs/Imagens encontrados.`
@@ -475,7 +488,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
       return ex;
     });
 
-    onUpdate({ ...workout, exercises: optimizedExercises });
+    handleWorkoutUpdate({ ...workout, exercises: optimizedExercises });
     toast.success("Treino otimizado com sucesso!", {
       description: "Exercícios ordenados por categoria e séries validadas."
     });
@@ -488,7 +501,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
       const oldIndex = workout.exercises.findIndex((ex) => ex.id === active.id);
       const newIndex = workout.exercises.findIndex((ex) => ex.id === over.id);
 
-      onUpdate({
+      handleWorkoutUpdate({
         ...workout,
         exercises: arrayMove(workout.exercises, oldIndex, newIndex),
       });
@@ -668,10 +681,17 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
       <div className="lg:w-80 shrink-0">
         <div className="lg:sticky lg:top-24 space-y-6">
           <div className="bg-gym-card p-6 rounded-3xl border border-white/5 shadow-2xl">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600 mb-8 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Resumo do Treino
-            </h4>
+            <div className="flex items-center justify-between mb-8">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Resumo do Treino
+              </h4>
+              {workout.lastUpdated && (
+                <span className="text-[8px] font-bold text-gray-800 uppercase tracking-widest">
+                  Atu: {workout.lastUpdated}
+                </span>
+              )}
+            </div>
             
             <div className="space-y-6">
               <div className="flex items-center justify-between">

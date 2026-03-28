@@ -48,6 +48,7 @@ export interface Workout {
   id: string;
   name: string; // Treino A, B, C...
   exercises: Exercise[];
+  lastUpdated?: string;
 }
 
 export interface Student {
