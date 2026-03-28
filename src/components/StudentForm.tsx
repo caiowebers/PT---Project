@@ -186,13 +186,16 @@ export default function StudentForm() {
               <Activity className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-wider">Avaliação Física</h3>
             </div>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               {[
                 { label: "Peso (kg)", key: "weight" },
                 { label: "Altura (m)", key: "height" },
                 { label: "IMC", key: "bmi" },
                 { label: "TBM (kcal)", key: "bmr" },
-                { label: "Fcmáx (bpm)", key: "maxHr" }
+                { label: "Fcmáx (bpm)", key: "maxHr" },
+                { label: "% Gordura", key: "bodyFat" },
+                { label: "Massa Muscular (kg)", key: "muscleMass" },
+                { label: "Massa Gorda (kg)", key: "fatMass" }
               ].map(field => (
                 <div key={field.key} className="space-y-1">
                   <label className="text-xs text-gray-500">{field.label}</label>

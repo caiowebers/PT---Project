@@ -5,6 +5,9 @@ export interface PhysicalEvaluation {
   bmi: number;
   bmr: number;
   maxHr: number;
+  bodyFat?: number;
+  muscleMass?: number;
+  fatMass?: number;
 }
 
 export interface BodyMeasurements {
@@ -21,14 +24,24 @@ export interface BodyMeasurements {
   calfL: number;
 }
 
+export interface ExerciseSet {
+  id: string;
+  reps: string;
+  load: string;
+}
+
 export interface Exercise {
   id: string;
   name: string;
+  description?: string;
   category: "Ativação" | "Aquecimento" | "Principal" | "Abdominais" | "Alongamentos";
   reps: string;
   rest: string;
   gifUrl?: string;
   completed?: boolean;
+  sets?: ExerciseSet[];
+  loadUnit?: "Kg" | "Libras" | "Pesos" | "%";
+  repType?: "Repetições" | "Minutos" | "Segundos";
 }
 
 export interface Workout {

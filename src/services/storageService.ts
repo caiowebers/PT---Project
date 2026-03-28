@@ -75,19 +75,21 @@ export const storageService = {
           exercises: [
             {
               id: uuidv4(),
-              name: "Bench Press",
+              name: "Supino Reto",
               category: "Principal",
               reps: "3x12",
               rest: "60s",
-              gifUrl: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Bench_Press/0.jpg"
+              gifUrl: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJqZ3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/v1.Y2lkPTc5MGI3NjExNHJqZ3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKv6eSgLJLpK74A/giphy.gif",
+              description: "Deite-se no banco, segure a barra com as mãos um pouco mais largas que os ombros. Desça a barra até o peito e empurre para cima."
             },
             {
               id: uuidv4(),
-              name: "Lat Pulldown",
+              name: "Puxada Frontal",
               category: "Principal",
               reps: "3x12",
               rest: "60s",
-              gifUrl: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Lat_Pulldown/0.jpg"
+              gifUrl: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJqZ3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/v1.Y2lkPTc5MGI3NjExNHJqZ3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKv6eSgLJLpK74A/giphy.gif",
+              description: "Sente-se na máquina, segure a barra com pegada aberta. Puxe a barra em direção ao peito, mantendo as costas retas."
             }
           ]
         }

@@ -1,5 +1,6 @@
-const EXERCISES_URL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
-const IMAGES_BASE_URL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises";
+import { GoogleGenAI, Type } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export interface WgerExercise {
   id: string | number;
@@ -9,69 +10,98 @@ export interface WgerExercise {
   images: string[];
   primaryMuscles: string[];
   secondaryMuscles: string[];
+  gifUrl?: string;
 }
-
-let cachedExercises: any[] = [];
 
 export const wgerService = {
   getMuscles: async (): Promise<string[]> => {
-    if (cachedExercises.length === 0) {
-      await wgerService.searchExercises("");
+    return [
+      "Peito", "Costas", "Pernas", "Ombros", "Bíceps", "Tríceps", 
+      "Abdominais", "Glúteos", "Gémeos", "Lombar", "Cardio", "Mobilidade"
+    ];
+  },
+
+  getPopularExercises: (muscle?: string | null): string[] => {
+    if (!muscle) {
+      return ["Supino Reto", "Agachamento", "Levantamento Terra", "Puxada Frontal", "Desenvolvimento", "Prancha", "Rosca Direta", "Tríceps Corda"];
     }
-    const muscles = new Set<string>();
-    cachedExercises.forEach(ex => {
-      ex.primaryMuscles?.forEach((m: string) => muscles.add(m));
-    });
-    return Array.from(muscles).sort();
+    const popular: Record<string, string[]> = {
+      "Peito": ["Supino Reto", "Supino Inclinado", "Crucifixo", "Flexões", "Chest Press"],
+      "Costas": ["Puxada Frontal", "Remada Curvada", "Levantamento Terra", "Barra Fixa", "Remada Baixa"],
+      "Pernas": ["Agachamento", "Leg Press", "Extensora", "Flexora", "Agachamento Búlgaro"],
+      "Ombros": ["Desenvolvimento", "Elevação Lateral", "Elevação Frontal", "Face Pull"],
+      "Bíceps": ["Rosca Direta", "Rosca Martelo", "Rosca Concentrada", "Rosca Scott"],
+      "Tríceps": ["Tríceps Corda", "Tríceps Testa", "Mergulho", "Tríceps Coice"],
+      "Abdominais": ["Prancha", "Crunch", "Elevação de Pernas", "Abdominal Bicicleta", "Prancha Lateral"],
+      "Glúteos": ["Elevação Pélvica", "Afundo", "Stiff", "Cadeira Abdutora"],
+      "Gémeos": ["Elevação de Gémeos em Pé", "Elevação de Gémeos Sentado"],
+      "Antebraço": ["Rosca Inversa", "Flexão de Punho"],
+      "Lombar": ["Hiperextensão", "Good Morning"],
+      "Cardio": ["Corrida", "Bicicleta", "Elíptica", "Remo", "Corda"],
+      "Mobilidade": ["Mobilidade de Quadril", "Mobilidade de Ombro", "Gato-Vaca", "Cão Olhando para Baixo"]
+    };
+    return popular[muscle] || [];
   },
 
   searchExercises: async (term: string, muscle?: string): Promise<WgerExercise[]> => {
+    if (!term && !muscle) return [];
+
     try {
-      if (cachedExercises.length === 0) {
-        console.log("Fetching exercises from GitHub...");
-        const response = await fetch(EXERCISES_URL);
-        cachedExercises = await response.json();
-      }
-
-      console.log(`Searching exercise-db for: ${term} (Muscle: ${muscle || 'any'})`);
+      console.log(`Searching for exercises using AI: ${term} (Muscle: ${muscle || 'any'})`);
       
-      let filtered = cachedExercises;
+      const prompt = `Find 8-12 fitness exercises related to "${term || 'popular exercises'}" ${muscle ? `targeting ${muscle}` : ""}. 
+      Include a mix of common, advanced, and alternative variations to provide a comprehensive library.
+      For each exercise, provide:
+      1. Name (in Portuguese, e.g., "Supino Reto" instead of "Bench Press")
+      2. Detailed instructions (in Portuguese)
+      3. Category (Ativação, Aquecimento, Principal, Abdominais, Alongamentos)
+      4. Primary muscle group (in Portuguese)
+      5. A direct URL to a high-quality GIF or image of the exercise (prefer GIFs from reliable fitness sources like Giphy, Pinterest, or fitness wikis).
       
-      if (muscle) {
-        filtered = filtered.filter((ex: any) => 
-          ex.primaryMuscles?.includes(muscle) || ex.secondaryMuscles?.includes(muscle)
-        );
-      }
+      Return the results as a JSON array of objects.`;
 
-      if (term) {
-        filtered = filtered.filter((ex: any) => 
-          ex.name.toLowerCase().includes(term.toLowerCase())
-        );
-      }
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                description: { type: Type.STRING },
+                category: { type: Type.STRING },
+                primaryMuscle: { type: Type.STRING },
+                mediaUrl: { type: Type.STRING, description: "Direct URL to a GIF or image" }
+              },
+              required: ["name", "description", "category", "primaryMuscle", "mediaUrl"]
+            }
+          }
+        }
+      });
 
-      const results = filtered
-        .slice(0, 30)
-        .map((ex: any) => ({
-          id: ex.id,
-          name: ex.name,
-          description: ex.instructions?.join(" ") || "",
-          category: ex.category || "Geral",
-          images: ex.images || [],
-          primaryMuscles: ex.primaryMuscles || [],
-          secondaryMuscles: ex.secondaryMuscles || []
-        }));
-
-      return results;
+      const results = JSON.parse(response.text || "[]");
+      
+      return results.map((ex: any, idx: number) => ({
+        id: `ai-${Date.now()}-${idx}`,
+        name: ex.name,
+        description: ex.description,
+        category: ex.category,
+        images: [ex.mediaUrl],
+        gifUrl: ex.mediaUrl,
+        primaryMuscles: [ex.primaryMuscle],
+        secondaryMuscles: []
+      }));
     } catch (error) {
-      console.error("Exercise DB Error:", error);
+      console.error("AI Search Error:", error);
       return [];
     }
   },
 
   getExerciseImage: (exercise: WgerExercise): string | undefined => {
-    if (exercise.images && exercise.images.length > 0) {
-      return `${IMAGES_BASE_URL}/${exercise.images[0]}`;
-    }
-    return undefined;
+    return exercise.gifUrl || (exercise.images && exercise.images[0]);
   }
 };

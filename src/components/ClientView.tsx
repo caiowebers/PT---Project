@@ -18,13 +18,23 @@ import { Student, Workout, Exercise } from "../types";
 import ExerciseCard from "./ExerciseCard";
 import { storageService } from "../services/storageService";
 
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as ChartTooltip, 
+  ResponsiveContainer,
+  Legend
+} from "recharts";
+
 export default function ClientView() {
   const { shareSlug } = useParams();
   const [student, setStudent] = useState<Student | null>(null);
   const [activeWorkoutIdx, setActiveWorkoutIdx] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [showMetrics, setShowMetrics] = useState(false);
-
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,6 +68,13 @@ export default function ClientView() {
 
   const currentWorkout = student.workouts[activeWorkoutIdx];
   const isWorkoutComplete = currentWorkout?.exercises.every(e => completedExercises.has(e.id));
+
+  const chartData = student.evaluations.map(ev => ({
+    date: ev.date,
+    weight: ev.weight,
+    bodyFat: ev.bodyFat || 0,
+    muscleMass: ev.muscleMass || 0,
+  }));
 
   const toggleExercise = (id: string) => {
     const newSet = new Set(completedExercises);
@@ -149,6 +166,30 @@ export default function ClientView() {
               exit={{ height: 0 }}
               className="px-4 pb-4 space-y-4 overflow-hidden"
             >
+              <div className="p-4 rounded-xl bg-black/40 border border-gym-border h-64">
+                <h4 className="text-[10px] font-black uppercase text-gray-500 mb-4">Comparativo de Avaliações</h4>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#666" 
+                      fontSize={10} 
+                      tickFormatter={(val) => new Date(val).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    />
+                    <YAxis stroke="#666" fontSize={10} />
+                    <ChartTooltip 
+                      contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px', fontSize: '10px' }}
+                      itemStyle={{ padding: '0' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                    <Line type="monotone" dataKey="weight" name="Peso" stroke="#39FF14" strokeWidth={2} dot={{ r: 4, fill: '#39FF14' }} />
+                    <Line type="monotone" dataKey="bodyFat" name="% Gordura" stroke="#FF5F1F" strokeWidth={2} dot={{ r: 4, fill: '#FF5F1F' }} />
+                    <Line type="monotone" dataKey="muscleMass" name="Massa Muscular" stroke="#00D1FF" strokeWidth={2} dot={{ r: 4, fill: '#00D1FF' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-black/40 border border-gym-border">
                   <p className="text-xs text-gray-500 uppercase">Peso Atual</p>
