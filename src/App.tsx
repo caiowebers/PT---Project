@@ -1,0 +1,52 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Toaster } from "sonner";
+import AdminDashboard from "./components/AdminDashboard";
+import ClientView from "./components/ClientView";
+import Login from "./components/Login";
+
+export default function App() {
+  const [isAdmin, setIsAdmin] = useState(() => {
+    return localStorage.getItem("gymflow_admin") === "true";
+  });
+
+  const handleLogin = (password: string) => {
+    const correctPassword = process.env.ADMIN_PASSWORD || "admin123";
+    if (password === correctPassword) {
+      setIsAdmin(true);
+      localStorage.setItem("gymflow_admin", "true");
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogout = () => {
+    setIsAdmin(false);
+    localStorage.removeItem("gymflow_admin");
+  };
+
+  return (
+    <Router>
+      <div className="min-h-screen bg-gym-dark">
+        <Toaster position="top-center" richColors theme="dark" />
+        <Routes>
+          <Route 
+            path="/admin/*" 
+            element={isAdmin ? <AdminDashboard onLogout={handleLogout} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/login" 
+            element={isAdmin ? <Navigate to="/admin" /> : <Login onLogin={handleLogin} />} 
+          />
+          <Route path="/view/:shareSlug" element={<ClientView />} />
+          <Route path="/" element={<Navigate to="/login" />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
