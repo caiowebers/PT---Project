@@ -34,11 +34,12 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     };
   }, []);
 
-  const isFirebaseAuthed = currentUser && currentUser.email === "caioweber1@gmail.com";
+  const isFirebaseAuthed = !!currentUser;
+  const isVerifiedAdmin = currentUser && currentUser.email === "caioweber1@gmail.com";
 
   const handleGenerateTest = async () => {
     if (!isFirebaseAuthed) {
-      toast.error("Precisa de estar autenticado com o email correto (caioweber1@gmail.com) para criar alunos.");
+      toast.error("Precisa de estar autenticado (Password ou Google) para criar alunos.");
       return;
     }
 
@@ -116,13 +117,16 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-center gap-3 text-red-500">
             <AlertTriangle className="w-5 h-5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="font-bold">Atenção: Autenticação Firebase Pendente.</p>
-              <p>
-                {currentUser 
-                  ? `Está autenticado como ${currentUser.email}, mas apenas caioweber1@gmail.com tem permissão de escrita.` 
-                  : "Não está autenticado no Firebase. Não conseguirá guardar ou editar alunos."}
-              </p>
-              <p className="mt-1">Por favor, faça login com a conta Google correta na página de entrada.</p>
+              <p className="font-bold">Atenção: Sessão Firebase não iniciada.</p>
+              <p>Não conseguirá guardar ou editar alunos. Por favor, faça login com a Password ou Google na página de entrada.</p>
+            </div>
+          </div>
+        )}
+        {isFirebaseAuthed && !isVerifiedAdmin && (
+          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/50 rounded-xl flex items-center gap-3 text-blue-400">
+            <div className="text-sm">
+              <p className="font-bold">Sessão Local Ativa</p>
+              <p>Está a usar uma sessão anónima. Os dados serão guardados, mas para segurança total e gestão multi-dispositivo, recomenda-se o login com Google Admin.</p>
             </div>
           </div>
         )}

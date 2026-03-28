@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Dumbbell, Lock, LogIn } from "lucide-react";
 import { motion } from "motion/react";
-import { auth, googleProvider, signInWithPopup } from "../firebase";
+import { auth, googleProvider, signInWithPopup, signInAnonymously } from "../firebase";
 import { toast } from "sonner";
 
 interface LoginProps {
@@ -13,12 +13,23 @@ export default function Login({ onLogin }: LoginProps) {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (onLogin(password)) {
-      setError(false);
-    } else {
-      setError(true);
+    setLoading(true);
+    try {
+      if (onLogin(password)) {
+        // Sign in anonymously to allow Firestore writes without Google login
+        await signInAnonymously(auth);
+        setError(false);
+        toast.success("Sessão iniciada!");
+      } else {
+        setError(true);
+      }
+    } catch (err) {
+      console.error("Erro ao entrar anonimamente:", err);
+      toast.error("Erro ao iniciar sessão no Firebase.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -28,7 +39,7 @@ export default function Login({ onLogin }: LoginProps) {
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user.email === "caioweber1@gmail.com") {
         onLogin(process.env.ADMIN_PASSWORD || "admin123");
-        toast.success("Autenticado com sucesso!");
+        toast.success("Autenticado como Admin com sucesso!");
       } else {
         toast.error("Acesso negado. Apenas o administrador pode entrar.");
         await auth.signOut();

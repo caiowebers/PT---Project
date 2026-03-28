@@ -165,7 +165,8 @@ export const storageService = {
         unsubscribeSnapshot = null;
       }
       
-      if (user && user.email === "caioweber1@gmail.com") {
+      // Allow any authenticated user (Google or Anonymous) to see the list
+      if (user) {
         unsubscribeSnapshot = onSnapshot(collection(db, COLLECTION), (snapshot) => {
           const students = snapshot.docs.map(doc => doc.data() as Student);
           callback(students);
