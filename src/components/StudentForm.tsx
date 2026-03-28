@@ -47,19 +47,24 @@ export default function StudentForm() {
 
   const handleSave = async () => {
     if (!student.name) {
-      alert("Por favor, insira o nome do aluno.");
+      toast.error("Por favor, insira o nome do aluno.");
       return;
     }
 
-    const studentToSave = {
-      ...student,
-      evaluations: [...(student.evaluations || []), { ...currentEval, date: new Date().toISOString() } as PhysicalEvaluation],
-      measurements: [...(student.measurements || []), { ...currentMeas, date: new Date().toISOString() } as BodyMeasurements]
-    } as Student;
+    try {
+      const studentToSave = {
+        ...student,
+        evaluations: [...(student.evaluations || []), { ...currentEval, date: new Date().toISOString() } as PhysicalEvaluation],
+        measurements: [...(student.measurements || []), { ...currentMeas, date: new Date().toISOString() } as BodyMeasurements]
+      } as Student;
 
-    await storageService.saveStudent(studentToSave);
-    toast.success("Dados do aluno guardados com sucesso!");
-    navigate("/admin");
+      await storageService.saveStudent(studentToSave);
+      toast.success("Dados do aluno guardados com sucesso!");
+      navigate("/admin");
+    } catch (error) {
+      console.error("Erro ao guardar aluno:", error);
+      toast.error("Erro ao guardar dados. Certifique-se que está autenticado com Google.");
+    }
   };
 
   const addWorkout = () => {

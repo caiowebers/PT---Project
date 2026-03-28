@@ -1,5 +1,6 @@
-import { Student } from "../types";
-import { db, handleFirestoreError, OperationType } from "../firebase";
+import { Student, PhysicalEvaluation, BodyMeasurements, Workout, Exercise } from "../types";
+import { db, handleFirestoreError, OperationType, auth, onAuthStateChanged } from "../firebase";
+import { v4 as uuidv4 } from "uuid";
 import { 
   collection, 
   doc, 
@@ -9,12 +10,97 @@ import {
   deleteDoc, 
   query, 
   where,
-  onSnapshot
+  onSnapshot,
+  getDocFromServer
 } from "firebase/firestore";
 
 const COLLECTION = "students";
 
+// Test connection to Firestore
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if(error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration. ");
+    }
+  }
+}
+testConnection();
+
 export const storageService = {
+  generateTestStudent: async () => {
+    const id = uuidv4();
+    const shareSlug = uuidv4().slice(0, 8);
+    const testStudent: Student = {
+      id,
+      shareSlug,
+      name: `Aluno Teste ${Math.floor(Math.random() * 1000)}`,
+      age: 25 + Math.floor(Math.random() * 10),
+      goal: "Hipertrofia e Condicionamento",
+      startDate: new Date().toISOString().split('T')[0],
+      notes: "Este é um aluno gerado automaticamente para testes.",
+      evaluations: [
+        {
+          date: new Date().toISOString().split('T')[0],
+          weight: 75,
+          height: 175,
+          bmi: 24.5,
+          bmr: 1800,
+          maxHr: 190
+        }
+      ],
+      measurements: [
+        {
+          date: new Date().toISOString().split('T')[0],
+          chest: 100,
+          bicepsR: 35,
+          bicepsL: 35,
+          waist: 80,
+          abdomen: 82,
+          hips: 95,
+          thighR: 55,
+          thighL: 55,
+          calfR: 38,
+          calfL: 38
+        }
+      ],
+      workouts: [
+        {
+          id: uuidv4(),
+          name: "Treino A - Superior",
+          exercises: [
+            {
+              id: uuidv4(),
+              name: "Supino Reto",
+              category: "Principal",
+              reps: "3x12",
+              rest: "60s",
+              gifUrl: "https://wger.de/media/exercise-images/192/Bench-press-1.png"
+            },
+            {
+              id: uuidv4(),
+              name: "Puxada Frontal",
+              category: "Principal",
+              reps: "3x12",
+              rest: "60s",
+              gifUrl: "https://wger.de/media/exercise-images/158/Lat-pulldown-1.png"
+            }
+          ]
+        }
+      ]
+    };
+
+    try {
+      const docRef = doc(db, COLLECTION, id);
+      await setDoc(docRef, testStudent);
+      return testStudent;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${id}`);
+      throw error;
+    }
+  },
+
   getStudents: async (): Promise<Student[]> => {
     try {
       const querySnapshot = await getDocs(collection(db, COLLECTION));
@@ -69,11 +155,28 @@ export const storageService = {
   },
 
   subscribeToStudents: (callback: (students: Student[]) => void) => {
-    return onSnapshot(collection(db, COLLECTION), (snapshot) => {
-      const students = snapshot.docs.map(doc => doc.data() as Student);
-      callback(students);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, COLLECTION);
+    let unsubscribeSnapshot: (() => void) | null = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+      
+      if (user && user.email === "caioweber1@gmail.com") {
+        unsubscribeSnapshot = onSnapshot(collection(db, COLLECTION), (snapshot) => {
+          const students = snapshot.docs.map(doc => doc.data() as Student);
+          callback(students);
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, COLLECTION);
+        });
+      } else {
+        callback([]);
+      }
     });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
   }
 };

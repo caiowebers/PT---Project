@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
-import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar } from "lucide-react";
+import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar, AlertTriangle, Beaker } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import StudentForm from "./StudentForm";
 import { Student } from "../types";
 import { storageService } from "../services/storageService";
+import { auth, onAuthStateChanged } from "../firebase";
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -15,13 +16,41 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isFirebaseAuthed, setIsFirebaseAuthed] = useState(!!auth.currentUser);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = storageService.subscribeToStudents((data) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setIsFirebaseAuthed(!!user);
+    });
+
+    const unsubscribeStudents = storageService.subscribeToStudents((data) => {
       setStudents(data);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeStudents();
+    };
   }, []);
+
+  const handleGenerateTest = async () => {
+    if (!isFirebaseAuthed) {
+      toast.error("Precisa de estar autenticado para criar alunos.");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      await storageService.generateTestStudent();
+      toast.success("Aluno de teste criado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar aluno:", error);
+      toast.error("Falha ao gerar aluno de teste.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Tem a certeza que deseja remover este aluno?")) {
@@ -81,6 +110,15 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8">
+        {!isFirebaseAuthed && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-center gap-3 text-red-500">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <div className="text-sm">
+              <p className="font-bold">Atenção: Não está autenticado no Firebase.</p>
+              <p>Não conseguirá guardar ou editar alunos. Por favor, faça login com Google na página de entrada.</p>
+            </div>
+          </div>
+        )}
         <Routes>
           <Route path="/" element={
             <div className="max-w-5xl mx-auto space-y-8">
@@ -89,13 +127,23 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Gestão de Alunos</h2>
                   <p className="text-gray-400">Adicione e gira os planos de treino dos seus alunos.</p>
                 </div>
-                <button 
-                  onClick={() => navigate("/admin/new")}
-                  className="flex items-center justify-center gap-2 px-6 py-3 font-bold transition-all rounded-lg bg-neon-green text-gym-dark hover:bg-neon-green/90 neon-shadow-green"
-                >
-                  <Plus className="w-5 h-5" />
-                  Novo Aluno
-                </button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button 
+                    onClick={handleGenerateTest}
+                    disabled={isGenerating}
+                    className="flex items-center justify-center gap-2 px-4 py-3 font-bold transition-all rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10 disabled:opacity-50"
+                  >
+                    <Beaker className="w-5 h-5" />
+                    {isGenerating ? "A gerar..." : "Gerar Teste"}
+                  </button>
+                  <button 
+                    onClick={() => navigate("/admin/new")}
+                    className="flex items-center justify-center gap-2 px-6 py-3 font-bold transition-all rounded-lg bg-neon-green text-gym-dark hover:bg-neon-green/90 neon-shadow-green"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Novo Aluno
+                  </button>
+                </div>
               </div>
 
               {/* Stats Grid */}

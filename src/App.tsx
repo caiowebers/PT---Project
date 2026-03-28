@@ -9,11 +9,22 @@ import { Toaster } from "sonner";
 import AdminDashboard from "./components/AdminDashboard";
 import ClientView from "./components/ClientView";
 import Login from "./components/Login";
+import { auth, onAuthStateChanged } from "./firebase";
 
 export default function App() {
   const [isAdmin, setIsAdmin] = useState(() => {
     return localStorage.getItem("gymflow_admin") === "true";
   });
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && user.email === "caioweber1@gmail.com") {
+        setIsAdmin(true);
+        localStorage.setItem("gymflow_admin", "true");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleLogin = (password: string) => {
     const correctPassword = process.env.ADMIN_PASSWORD || "admin123";
@@ -25,9 +36,10 @@ export default function App() {
     return false;
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsAdmin(false);
     localStorage.removeItem("gymflow_admin");
+    await auth.signOut();
   };
 
   return (
