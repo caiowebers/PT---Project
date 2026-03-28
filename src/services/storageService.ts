@@ -23,6 +23,9 @@ async function testConnection() {
   } catch (error) {
     if(error instanceof Error && error.message.includes('the client is offline')) {
       console.error("Please check your Firebase configuration. ");
+      import("sonner").then(({ toast }) => {
+        toast.error("Erro de ligação ao Firebase. Verifique a sua internet ou configuração.");
+      });
     }
   }
 }

@@ -16,12 +16,12 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isFirebaseAuthed, setIsFirebaseAuthed] = useState(!!auth.currentUser);
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setIsFirebaseAuthed(!!user);
+      setCurrentUser(user);
     });
 
     const unsubscribeStudents = storageService.subscribeToStudents((data) => {
@@ -34,9 +34,11 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     };
   }, []);
 
+  const isFirebaseAuthed = currentUser && currentUser.email === "caioweber1@gmail.com";
+
   const handleGenerateTest = async () => {
     if (!isFirebaseAuthed) {
-      toast.error("Precisa de estar autenticado para criar alunos.");
+      toast.error("Precisa de estar autenticado com o email correto (caioweber1@gmail.com) para criar alunos.");
       return;
     }
 
@@ -114,8 +116,13 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-center gap-3 text-red-500">
             <AlertTriangle className="w-5 h-5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="font-bold">Atenção: Não está autenticado no Firebase.</p>
-              <p>Não conseguirá guardar ou editar alunos. Por favor, faça login com Google na página de entrada.</p>
+              <p className="font-bold">Atenção: Autenticação Firebase Pendente.</p>
+              <p>
+                {currentUser 
+                  ? `Está autenticado como ${currentUser.email}, mas apenas caioweber1@gmail.com tem permissão de escrita.` 
+                  : "Não está autenticado no Firebase. Não conseguirá guardar ou editar alunos."}
+              </p>
+              <p className="mt-1">Por favor, faça login com a conta Google correta na página de entrada.</p>
             </div>
           </div>
         )}

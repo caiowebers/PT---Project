@@ -57,14 +57,19 @@ export default function Login({ onLogin }: LoginProps) {
         </div>
 
         <div className="space-y-6">
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="w-full py-3 flex items-center justify-center gap-2 font-bold transition-all rounded-lg bg-white text-gym-dark hover:bg-gray-200 disabled:opacity-50"
-          >
-            <LogIn className="w-5 h-5" />
-            {loading ? "A autenticar..." : "Entrar com Google (Admin)"}
-          </button>
+          <div className="p-4 rounded-xl bg-neon-green/5 border border-neon-green/20">
+            <p className="text-xs text-center text-gray-400 mb-4">
+              A autenticação Google é necessária para guardar dados no Firebase.
+            </p>
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full py-4 flex items-center justify-center gap-3 font-bold transition-all rounded-lg bg-white text-gym-dark hover:bg-gray-200 disabled:opacity-50 shadow-lg"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+              {loading ? "A autenticar..." : "Entrar com Google (Admin)"}
+            </button>
+          </div>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
