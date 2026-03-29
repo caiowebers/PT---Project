@@ -1,5 +1,14 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  onAuthStateChanged, 
+  signInAnonymously,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -8,7 +17,14 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-export { signInWithPopup, onAuthStateChanged, signInAnonymously };
+export { 
+  signInWithPopup, 
+  onAuthStateChanged, 
+  signInAnonymously,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut
+};
 
 export enum OperationType {
   CREATE = 'create',

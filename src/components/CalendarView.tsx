@@ -224,7 +224,7 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
         )}
       </div>
 
-      <div className="glass-card p-4 overflow-hidden">
+      <div className="glass-card p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden">
         <div className="calendar-container">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
