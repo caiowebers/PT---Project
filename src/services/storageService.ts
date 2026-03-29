@@ -14,8 +14,42 @@ import {
   getDocFromServer
 } from "firebase/firestore";
 
-const COLLECTION = "students";
-const SESSIONS_COLLECTION = "aulas";
+const STUDENTS_SUBCOLLECTION = "students";
+const SESSIONS_SUBCOLLECTION = "aulas";
+
+// ============================================================================
+// Helper Functions - Caminhos únicos por utilizador
+// ============================================================================
+
+/**
+ * Gera caminho único para alunos de cada utilizador
+ * Formato: users/{uid}/students
+ */
+function getUserStudentsPath(uid?: string) {
+  const userId = uid || auth.currentUser?.uid;
+  if (!userId) throw new Error("Utilizador não autenticado. Não é possível aceder aos dados.");
+  return `users/${userId}/${STUDENTS_SUBCOLLECTION}`;
+}
+
+/**
+ * Gera caminho único para aulas de cada utilizador
+ * Formato: users/{uid}/aulas
+ */
+function getUserSessionsPath(uid?: string) {
+  const userId = uid || auth.currentUser?.uid;
+  if (!userId) throw new Error("Utilizador não autenticado. Não é possível aceder aos dados.");
+  return `users/${userId}/${SESSIONS_SUBCOLLECTION}`;
+}
+
+/**
+ * Garante que o utilizador está autenticado
+ * Lança erro se não houver UID
+ */
+function ensureAuthenticated(): string {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("Utilizador não autenticado.");
+  return uid;
+}
 
 // Test connection to Firestore
 async function testConnection() {
@@ -23,7 +57,7 @@ async function testConnection() {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
     if(error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. ");
+      console.error("Por favor verifica a tua ligação ao Firebase.");
       import("sonner").then(({ toast }) => {
         toast.error("Erro de ligação ao Firebase. Verifique a sua internet ou configuração.");
       });
@@ -34,6 +68,7 @@ testConnection();
 
 export const storageService = {
   generateTestStudent: async () => {
+    const uid = ensureAuthenticated();
     const id = uuidv4();
     const shareSlug = uuidv4().slice(0, 8);
     const testStudent: Student = {
@@ -89,7 +124,7 @@ export const storageService = {
               category: "Principal",
               reps: "3x12",
               rest: "60s",
-              gifUrl: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJqZ3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/v1.Y2lkPTc5MGI3NjExNHJqZ3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKv6eSgLJLpK74A/giphy.gif",
+              gifUrl: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJqZ3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/v1.Y2lkPTc5MGI3NjExNHJqZ3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6Z3R6JmVwPXYxX2ludGVybmFsZ2lmX2J5X2lkJmN0PQ/3o7TKv6eSgLJLpK74A/giphy.gif",
               description: "Sente-se na máquina, segure a barra com pegada aberta. Puxe a barra em direção ao peito, mantendo as costas retas."
             }
           ]
@@ -98,65 +133,84 @@ export const storageService = {
     };
 
     try {
-      const docRef = doc(db, COLLECTION, id);
+      const docRef = doc(db, getUserStudentsPath(uid), id);
       await setDoc(docRef, testStudent);
+      console.log(`✓ Aluno teste criado para utilizador ${uid}`);
       return testStudent;
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${id}`);
+      console.error("Erro ao criar aluno teste:", error);
+      handleFirestoreError(error, OperationType.WRITE, `${getUserStudentsPath(uid)}/${id}`);
       throw error;
     }
   },
 
   getStudents: async (): Promise<Student[]> => {
     try {
-      const querySnapshot = await getDocs(collection(db, COLLECTION));
+      const uid = ensureAuthenticated();
+      const querySnapshot = await getDocs(collection(db, getUserStudentsPath(uid)));
       return querySnapshot.docs.map(doc => doc.data() as Student);
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, COLLECTION);
+      console.error("Erro ao carregar alunos:", error);
+      handleFirestoreError(error, OperationType.GET, getUserStudentsPath());
       return [];
     }
   },
 
   getStudentById: async (id: string): Promise<Student | undefined> => {
     try {
-      const docRef = doc(db, COLLECTION, id);
+      const uid = ensureAuthenticated();
+      const docRef = doc(db, getUserStudentsPath(uid), id);
       const docSnap = await getDoc(docRef);
       return docSnap.exists() ? (docSnap.data() as Student) : undefined;
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `${COLLECTION}/${id}`);
+      console.error("Erro ao carregar aluno:", error);
+      handleFirestoreError(error, OperationType.GET, `${getUserStudentsPath()}/${id}`);
       return undefined;
     }
   },
 
   getStudentBySlug: async (slug: string): Promise<Student | undefined> => {
     try {
-      const q = query(collection(db, COLLECTION), where("shareSlug", "==", slug));
+      const uid = ensureAuthenticated();
+      const q = query(
+        collection(db, getUserStudentsPath(uid)), 
+        where("shareSlug", "==", slug)
+      );
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         return querySnapshot.docs[0].data() as Student;
       }
       return undefined;
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `${COLLECTION}?shareSlug=${slug}`);
+      console.error("Erro ao procurar aluno por slug:", error);
+      handleFirestoreError(error, OperationType.GET, `${getUserStudentsPath()}?shareSlug=${slug}`);
       return undefined;
     }
   },
 
   saveStudent: async (student: Student) => {
     try {
-      const docRef = doc(db, COLLECTION, student.id);
+      const uid = ensureAuthenticated();
+      const docRef = doc(db, getUserStudentsPath(uid), student.id);
       await setDoc(docRef, student);
+      console.log(`✓ Aluno ${student.name} guardado com sucesso para ${uid}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${student.id}`);
+      console.error("Erro ao guardar aluno:", error);
+      handleFirestoreError(error, OperationType.WRITE, `${getUserStudentsPath()}/${student.id}`);
+      throw error;
     }
   },
 
   deleteStudent: async (id: string) => {
     try {
-      const docRef = doc(db, COLLECTION, id);
+      const uid = ensureAuthenticated();
+      const docRef = doc(db, getUserStudentsPath(uid), id);
       await deleteDoc(docRef);
+      console.log(`✓ Aluno eliminado com sucesso`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `${COLLECTION}/${id}`);
+      console.error("Erro ao eliminar aluno:", error);
+      handleFirestoreError(error, OperationType.DELETE, `${getUserStudentsPath()}/${id}`);
+      throw error;
     }
   },
 
@@ -164,46 +218,49 @@ export const storageService = {
     return auth.currentUser?.uid;
   },
 
-  // Session Management
+  // ============================================================================
+  // Session Management (Aulas)
+  // ============================================================================
+
   getSessions: async (): Promise<ClassSession[]> => {
     try {
-      const querySnapshot = await getDocs(collection(db, SESSIONS_COLLECTION));
+      const uid = ensureAuthenticated();
+      const querySnapshot = await getDocs(collection(db, getUserSessionsPath(uid)));
       return querySnapshot.docs.map(doc => doc.data() as ClassSession);
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, SESSIONS_COLLECTION);
+      console.error("Erro ao carregar aulas:", error);
+      handleFirestoreError(error, OperationType.GET, getUserSessionsPath());
       return [];
     }
   },
 
   saveSession: async (session: ClassSession) => {
     try {
-      const docRef = doc(db, SESSIONS_COLLECTION, session.id);
+      const uid = ensureAuthenticated();
+      const docRef = doc(db, getUserSessionsPath(uid), session.id);
       await setDoc(docRef, session);
+      console.log(`✓ Aula agendada com sucesso para ${uid}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `${SESSIONS_COLLECTION}/${session.id}`);
+      console.error("Erro ao guardar aula:", error);
+      handleFirestoreError(error, OperationType.WRITE, `${getUserSessionsPath()}/${session.id}`);
+      throw error;
     }
   },
 
   deleteSession: async (id: string) => {
     try {
-      const docRef = doc(db, SESSIONS_COLLECTION, id);
+      const uid = ensureAuthenticated();
+      const docRef = doc(db, getUserSessionsPath(uid), id);
       await deleteDoc(docRef);
+      console.log(`✓ Aula eliminada com sucesso`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `${SESSIONS_COLLECTION}/${id}`);
+      console.error("Erro ao eliminar aula:", error);
+      handleFirestoreError(error, OperationType.DELETE, `${getUserSessionsPath()}/${id}`);
+      throw error;
     }
   },
 
   subscribeToSessions: (callback: (sessions: ClassSession[]) => void) => {
-    const unsubscribe = onSnapshot(collection(db, SESSIONS_COLLECTION), (snapshot) => {
-      const sessions = snapshot.docs.map(doc => doc.data() as ClassSession);
-      callback(sessions);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, SESSIONS_COLLECTION);
-    });
-    return unsubscribe;
-  },
-
-  subscribeToStudents: (callback: (students: Student[]) => void) => {
     let unsubscribeSnapshot: (() => void) | null = null;
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeSnapshot) {
@@ -211,14 +268,25 @@ export const storageService = {
         unsubscribeSnapshot = null;
       }
       
-      // Allow any authenticated user (Google or Anonymous) to see the list
       if (user) {
-        unsubscribeSnapshot = onSnapshot(collection(db, COLLECTION), (snapshot) => {
-          const students = snapshot.docs.map(doc => doc.data() as Student);
-          callback(students);
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, COLLECTION);
-        });
+        try {
+          unsubscribeSnapshot = onSnapshot(
+            collection(db, getUserSessionsPath(user.uid)),
+            (snapshot) => {
+              const sessions = snapshot.docs.map(doc => doc.data() as ClassSession);
+              callback(sessions);
+              console.log(`✓ ${sessions.length} aula(s) carregada(s) para ${user.email}`);
+            },
+            (error) => {
+              console.error("Erro ao subscrever aulas:", error);
+              handleFirestoreError(error, OperationType.GET, getUserSessionsPath(user.uid));
+              callback([]);
+            }
+          );
+        } catch (error) {
+          console.error("Erro ao configurar subscrição de aulas:", error);
+          callback([]);
+        }
       } else {
         callback([]);
       }
@@ -230,12 +298,55 @@ export const storageService = {
     };
   },
 
+  subscribeToStudents: (callback: (students: Student[]) => void) => {
+    let unsubscribeSnapshot: (() => void) | null = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+      
+      if (user) {
+        try {
+          unsubscribeSnapshot = onSnapshot(
+            collection(db, getUserStudentsPath(user.uid)),
+            (snapshot) => {
+              const students = snapshot.docs.map(doc => doc.data() as Student);
+              callback(students);
+              console.log(`✓ ${students.length} aluno(s) carregado(s) para ${user.email}`);
+            },
+            (error) => {
+              console.error("Erro ao subscrever alunos:", error);
+              handleFirestoreError(error, OperationType.GET, getUserStudentsPath(user.uid));
+              callback([]);
+            }
+          );
+        } catch (error) {
+          console.error("Erro ao configurar subscrição de alunos:", error);
+          callback([]);
+        }
+      } else {
+        callback([]);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
+  },
+
+  // ============================================================================
   // User Profile Management
+  // ============================================================================
+
   saveUserProfile: async (userProfile: UserProfile) => {
     try {
       const docRef = doc(db, "users", userProfile.uid);
       await setDoc(docRef, userProfile);
+      console.log(`✓ Perfil guardado com sucesso para ${userProfile.email}`);
     } catch (error) {
+      console.error("Erro ao guardar perfil:", error);
       handleFirestoreError(error, OperationType.WRITE, `users/${userProfile.uid}`);
       throw error;
     }
@@ -251,7 +362,6 @@ export const storageService = {
       return undefined;
     } catch (error) {
       console.warn(`Aviso ao ler perfil do utilizador ${uid}:`, error);
-      // Don't throw - allow graceful degradation
       return undefined;
     }
   },
