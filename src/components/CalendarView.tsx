@@ -133,7 +133,7 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
         id: selectedEvent?.id || uuidv4(),
         studentId: formData.studentId,
         studentName: student.name,
-        instructorId: storageService.getCurrentUserId() || "admin",
+        instructorId: selectedEvent?.instructorId || storageService.getCurrentUserId() || "",
         workoutTitle: formData.workoutTitle,
         start: formData.start,
         end: formData.end,
