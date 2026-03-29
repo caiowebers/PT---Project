@@ -2,21 +2,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // Data Model (Per-User Isolated)
+    // Assumed Data Model
     // ===============================================================
     //
-    // Collection: users/{uid}
-    // Document ID: {uid}
-    // Fields:
-    //   - uid: string (required)
-    //   - email: string (required)
-    //   - displayName: string
-    //   - createdAt: string
-    //   - updatedAt: string
-    //   - role: string (admin | trainer | client)
-    //   - isActive: boolean
-    //
-    // SubCollection: users/{uid}/students/{studentId}
+    // Collection: students
+    // Document ID: {studentId}
     // Fields:
     //   - id: string (required)
     //   - shareSlug: string (required)
@@ -28,15 +18,6 @@ service cloud.firestore {
     //   - evaluations: list
     //   - measurements: list
     //   - workouts: list
-    //
-    // SubCollection: users/{uid}/aulas/{aulaId}
-    // Fields:
-    //   - id: string (required)
-    //   - title: string
-    //   - date: string
-    //   - time: string
-    //   - studentId: string
-    //   - notes: string
     //
     // ===============================================================
 
@@ -59,58 +40,34 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() < 100;
     }
 
-    // ===============================================================
-    // User Profile Collection
-    // ===============================================================
-    match /users/{uid} {
-      // Only the user can read/write their own profile
-      allow read: if isAuthenticated() && request.auth.uid == uid;
-      allow write: if isAuthenticated() && request.auth.uid == uid;
-      allow create: if isAuthenticated();
-
-      // ===============================================================
-      // Students SubCollection (Per-User Isolated)
-      // ===============================================================
-      match /students/{studentId} {
-        // Only the owner can read their students
-        allow read: if isAuthenticated() && request.auth.uid == uid;
-        
-        // Only the owner can write their students
-        // Temporarily allow write without strict validation for debugging
-        allow write: if isAuthenticated() && request.auth.uid == uid;
-        
-        // Allow create for now without validation
-        allow create: if isAuthenticated() && request.auth.uid == uid;
-      }
-
-      // ===============================================================
-      // Aulas SubCollection (Per-User Isolated)
-      // ===============================================================
-      match /aulas/{aulaId} {
-        // Only the owner can read their sessions
-        allow read: if isAuthenticated() && request.auth.uid == uid;
-        
-        // Only the owner can write their sessions
-        allow write: if isAuthenticated() && request.auth.uid == uid;
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      
+      match /{document=**} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
       }
     }
 
-    // ===============================================================
-    // Legacy Collections (Deprecated - for backward compatibility)
-    // ===============================================================
+    // Students collection
     match /students/{studentId} {
+      // Allow read for everyone
       allow read: if true;
-      allow write: if false; // Deny all writes to legacy students collection
+      
+      // Allow write for admin only
+      allow write: if isAdmin();
     }
 
+    // Aulas collection
     match /aulas/{aulaId} {
       allow read: if true;
-      allow write: if false; // Deny all writes to legacy aulas collection
+      allow write: if isAuthenticated();
     }
 
+    // Sessions collection (legacy)
     match /sessions/{sessionId} {
       allow read: if true;
-      allow write: if false; // Deny all writes to legacy sessions collection
+      allow write: if isAuthenticated();
     }
   }
 }

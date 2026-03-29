@@ -18,6 +18,7 @@ import { format, addHours, parseISO } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { ClassSession, Student } from "../types";
 import { storageService } from "../services/storageService";
+import { googleCalendarService } from "../services/googleCalendarService";
 import { toast } from "sonner";
 
 interface CalendarViewProps {
@@ -137,8 +138,20 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
         start: formData.start,
         end: formData.end,
         status: formData.status,
-        notes: formData.notes
+        notes: formData.notes,
+        googleEventId: selectedEvent?.googleEventId
       };
+
+      if (googleCalendarService.getAccessToken()) {
+        if (selectedEvent?.googleEventId) {
+          await googleCalendarService.updateEvent(selectedEvent.googleEventId, newSession, student.name);
+        } else {
+          const eventId = await googleCalendarService.createEvent(newSession, student.name);
+          if (eventId) {
+            newSession.googleEventId = eventId;
+          }
+        }
+      }
 
       await storageService.saveSession(newSession);
       toast.success(selectedEvent ? "Aula atualizada!" : "Aula agendada!");
@@ -154,6 +167,9 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
   const handleDelete = async () => {
     if (!isAdmin || !selectedEvent) return;
     if (window.confirm("Tem certeza que deseja excluir esta aula?")) {
+      if (selectedEvent.googleEventId && googleCalendarService.getAccessToken()) {
+        await googleCalendarService.deleteEvent(selectedEvent.googleEventId);
+      }
       await storageService.deleteSession(selectedEvent.id);
       toast.success("Aula excluída");
       setIsModalOpen(false);
@@ -224,7 +240,7 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
         )}
       </div>
 
-      <div className="glass-card p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden">
+      <div className="glass-card p-4 overflow-hidden">
         <div className="calendar-container">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}

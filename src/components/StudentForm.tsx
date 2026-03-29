@@ -32,6 +32,9 @@ export default function StudentForm() {
   const [currentMeas, setCurrentMeas] = useState<Partial<BodyMeasurements>>({});
   const [sessions, setSessions] = useState<ClassSession[]>([]);
 
+  const [isEvalModified, setIsEvalModified] = useState(false);
+  const [isMeasModified, setIsMeasModified] = useState(false);
+
   useEffect(() => {
     const fetchStudent = async () => {
       if (isEdit && id) {
@@ -90,15 +93,29 @@ export default function StudentForm() {
 
     setIsSaving(true);
     try {
-      const studentToSave = {
-        ...student,
-        evaluations: [...(student.evaluations || []), { ...currentEval, date: new Date().toISOString() } as PhysicalEvaluation],
-        measurements: [...(student.measurements || []), { ...currentMeas, date: new Date().toISOString() } as BodyMeasurements]
-      } as Student;
+      const studentToSave = { ...student } as Student;
+
+      // Only add evaluation if modified
+      if (isEvalModified && currentEval.weight) {
+        studentToSave.evaluations = [
+          ...(student.evaluations || []), 
+          { ...currentEval, date: new Date().toISOString() } as PhysicalEvaluation
+        ];
+      }
+
+      // Only add measurement if modified
+      if (isMeasModified && (currentMeas.chest || currentMeas.waist || currentMeas.abdomen || currentMeas.hips)) {
+        studentToSave.measurements = [
+          ...(student.measurements || []), 
+          { ...currentMeas, date: new Date().toISOString() } as BodyMeasurements
+        ];
+      }
 
       await storageService.saveStudent(studentToSave);
       toast.success("Dados do aluno guardados com sucesso!");
       setHasUnsavedChanges(false);
+      setIsEvalModified(false);
+      setIsMeasModified(false);
       navigate("/admin");
     } catch (error) {
       console.error("Erro ao guardar aluno:", error);
@@ -268,6 +285,7 @@ export default function StudentForm() {
                     onChange={e => {
                       setCurrentEval(prev => ({ ...prev, [field.key]: parseFloat((e.target as HTMLInputElement).value) }));
                       setHasUnsavedChanges(true);
+                      setIsEvalModified(true);
                     }}
                     className="w-full p-2 bg-black border border-gym-border rounded focus:border-neon-green outline-hidden"
                   />
@@ -301,6 +319,7 @@ export default function StudentForm() {
                     onChange={e => {
                       setCurrentMeas(prev => ({ ...prev, [field.key]: parseFloat((e.target as HTMLInputElement).value) }));
                       setHasUnsavedChanges(true);
+                      setIsMeasModified(true);
                     }}
                     className="w-full p-2 bg-black border border-gym-border rounded focus:border-neon-orange outline-hidden"
                   />

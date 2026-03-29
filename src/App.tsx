@@ -18,7 +18,7 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && user.email === "caioweber1@gmail.com") {
+      if (user) {
         setIsAdmin(true);
         localStorage.setItem("gymflow_admin", "true");
       }
@@ -26,14 +26,9 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = (password: string) => {
-    const correctPassword = process.env.ADMIN_PASSWORD || "admin123";
-    if (password === correctPassword) {
-      setIsAdmin(true);
-      localStorage.setItem("gymflow_admin", "true");
-      return true;
-    }
-    return false;
+  const handleLogin = () => {
+    setIsAdmin(true);
+    localStorage.setItem("gymflow_admin", "true");
   };
 
   const handleLogout = async () => {

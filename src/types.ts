@@ -63,6 +63,7 @@ export interface ClassSession {
   end: string;   // ISO string
   status: 'scheduled' | 'completed' | 'cancelled';
   notes?: string;
+  googleEventId?: string;
 }
 
 export interface Student {
@@ -77,15 +78,4 @@ export interface Student {
   measurements: BodyMeasurements[];
   workouts: Workout[];
   sessions?: ClassSession[];
-}
-
-export interface UserProfile {
-  uid: string;
-  email: string;
-  displayName?: string;
-  photoUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-  role: 'admin' | 'trainer' | 'client';
-  isActive: boolean;
 }
