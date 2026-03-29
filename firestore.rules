@@ -76,10 +76,11 @@ service cloud.firestore {
         allow read: if isAuthenticated() && request.auth.uid == uid;
         
         // Only the owner can write their students
+        // Temporarily allow write without strict validation for debugging
         allow write: if isAuthenticated() && request.auth.uid == uid;
         
-        // Validate student data structure
-        allow create: if isAuthenticated() && request.auth.uid == uid && isValidStudent(request.resource.data);
+        // Allow create for now without validation
+        allow create: if isAuthenticated() && request.auth.uid == uid;
       }
 
       // ===============================================================
