@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, Link, useNavigate } from "react-router-dom";
+import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
 import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar, AlertTriangle, Beaker, Fingerprint, Star, MessageSquare, X, CalendarDays } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
@@ -24,6 +25,14 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<"students" | "workouts" | "agenda">("students");
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+
+  useEffect(() => {
+    if (location.state?.openCalendarForStudent) {
+      setActiveTab("agenda");
+      // Clear the state so it doesn't re-trigger on subsequent renders
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -338,7 +347,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 </div>
               )
             ) : (
-              <CalendarView isAdmin={true} />
+              <CalendarView isAdmin={true} openForStudentId={location.state?.openCalendarForStudent} />
             )
           } />
           <Route path="/new" element={<StudentForm />} />

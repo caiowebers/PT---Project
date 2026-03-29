@@ -58,6 +58,30 @@ export default function StudentForm() {
   const [activeTab, setActiveTab] = useState<"profile" | "physical" | "workouts" | "timeline">("profile");
   const [isSaving, setIsSaving] = useState(false);
 
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const handleBack = () => {
+    if (hasUnsavedChanges) {
+      if (window.confirm("Existem alterações não guardadas. Tem a certeza que deseja sair?")) {
+        navigate("/admin");
+      }
+    } else {
+      navigate("/admin");
+    }
+  };
+
   const handleSave = async () => {
     if (!student.name) {
       toast.error("Por favor, insira o nome do aluno.");
@@ -74,6 +98,7 @@ export default function StudentForm() {
 
       await storageService.saveStudent(studentToSave);
       toast.success("Dados do aluno guardados com sucesso!");
+      setHasUnsavedChanges(false);
       navigate("/admin");
     } catch (error) {
       console.error("Erro ao guardar aluno:", error);
@@ -105,7 +130,7 @@ export default function StudentForm() {
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <button 
-          onClick={() => navigate("/admin")}
+          onClick={handleBack}
           className="flex items-center gap-2 text-gray-400 transition-all hover:text-white"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -157,7 +182,10 @@ export default function StudentForm() {
               <input 
                 type="text" 
                 value={student.name}
-                onChange={e => setStudent(prev => ({ ...prev, name: (e.target as HTMLInputElement).value }))}
+                onChange={e => {
+                  setStudent(prev => ({ ...prev, name: (e.target as HTMLInputElement).value }));
+                  setHasUnsavedChanges(true);
+                }}
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
             </div>
@@ -166,7 +194,10 @@ export default function StudentForm() {
               <input 
                 type="number" 
                 value={student.age}
-                onChange={e => setStudent(prev => ({ ...prev, age: parseInt((e.target as HTMLInputElement).value) }))}
+                onChange={e => {
+                  setStudent(prev => ({ ...prev, age: parseInt((e.target as HTMLInputElement).value) }));
+                  setHasUnsavedChanges(true);
+                }}
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
             </div>
@@ -175,7 +206,10 @@ export default function StudentForm() {
               <input 
                 type="text" 
                 value={student.goal}
-                onChange={e => setStudent(prev => ({ ...prev, goal: (e.target as HTMLInputElement).value }))}
+                onChange={e => {
+                  setStudent(prev => ({ ...prev, goal: (e.target as HTMLInputElement).value }));
+                  setHasUnsavedChanges(true);
+                }}
                 placeholder="Ex: Hipertrofia e emagrecimento"
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
@@ -185,7 +219,10 @@ export default function StudentForm() {
               <input 
                 type="date" 
                 value={student.startDate}
-                onChange={e => setStudent(prev => ({ ...prev, startDate: (e.target as HTMLInputElement).value }))}
+                onChange={e => {
+                  setStudent(prev => ({ ...prev, startDate: (e.target as HTMLInputElement).value }));
+                  setHasUnsavedChanges(true);
+                }}
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
             </div>
@@ -194,7 +231,10 @@ export default function StudentForm() {
               <textarea 
                 rows={4}
                 value={student.notes}
-                onChange={e => setStudent(prev => ({ ...prev, notes: (e.target as HTMLTextAreaElement).value }))}
+                onChange={e => {
+                  setStudent(prev => ({ ...prev, notes: (e.target as HTMLTextAreaElement).value }));
+                  setHasUnsavedChanges(true);
+                }}
                 placeholder="Ex: Hidratação diária: 3,255L..."
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
@@ -225,7 +265,10 @@ export default function StudentForm() {
                     type="number" 
                     step="0.01"
                     value={(currentEval as any)[field.key] || ""}
-                    onChange={e => setCurrentEval(prev => ({ ...prev, [field.key]: parseFloat((e.target as HTMLInputElement).value) }))}
+                    onChange={e => {
+                      setCurrentEval(prev => ({ ...prev, [field.key]: parseFloat((e.target as HTMLInputElement).value) }));
+                      setHasUnsavedChanges(true);
+                    }}
                     className="w-full p-2 bg-black border border-gym-border rounded focus:border-neon-green outline-hidden"
                   />
                 </div>
@@ -255,7 +298,10 @@ export default function StudentForm() {
                     type="number" 
                     step="0.1"
                     value={(currentMeas as any)[field.key] || ""}
-                    onChange={e => setCurrentMeas(prev => ({ ...prev, [field.key]: parseFloat((e.target as HTMLInputElement).value) }))}
+                    onChange={e => {
+                      setCurrentMeas(prev => ({ ...prev, [field.key]: parseFloat((e.target as HTMLInputElement).value) }));
+                      setHasUnsavedChanges(true);
+                    }}
                     className="w-full p-2 bg-black border border-gym-border rounded focus:border-neon-orange outline-hidden"
                   />
                 </div>
@@ -269,7 +315,10 @@ export default function StudentForm() {
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Planos de Treino</h3>
               <button 
-                onClick={addWorkout}
+                onClick={() => {
+                  addWorkout();
+                  setHasUnsavedChanges(true);
+                }}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all rounded-lg bg-white/5 hover:bg-white/10 border border-gym-border"
               >
                 <Plus className="w-4 h-4" />
@@ -278,7 +327,7 @@ export default function StudentForm() {
             </div>
 
             {student.workouts?.length === 0 ? (
-              <div className="p-12 text-center border-2 border-dashed border-gym-border rounded-xl">
+              <div className="p-12 text-center border-2 dashed border-gym-border rounded-xl">
                 <Dumbbell className="w-12 h-12 mx-auto mb-4 text-gray-700" />
                 <p className="text-gray-500">Nenhum treino criado ainda.</p>
               </div>
@@ -303,7 +352,10 @@ export default function StudentForm() {
                           <h4 className="font-black text-xl tracking-tight">{workout.name}</h4>
                         </div>
                         <button 
-                          onClick={() => removeWorkout(workout.id)}
+                          onClick={() => {
+                            removeWorkout(workout.id);
+                            setHasUnsavedChanges(true);
+                          }}
                           className="p-2 text-red-500/30 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -316,6 +368,7 @@ export default function StudentForm() {
                             w.id === updatedWorkout.id ? updatedWorkout : w
                           );
                           setStudent(prev => ({ ...prev, workouts: newWorkouts }));
+                          setHasUnsavedChanges(true);
                         }} 
                       />
                     </div>
@@ -330,6 +383,13 @@ export default function StudentForm() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold tracking-tight">Histórico de Aulas</h3>
+              <button 
+                onClick={() => navigate("/admin", { state: { openCalendarForStudent: student.id } })}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all rounded-lg bg-neon-green text-gym-dark hover:bg-neon-green/90"
+              >
+                <Plus className="w-4 h-4" />
+                Agendar Aula
+              </button>
             </div>
             
             {sessions.length === 0 ? (

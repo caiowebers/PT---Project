@@ -23,9 +23,10 @@ import { toast } from "sonner";
 interface CalendarViewProps {
   isAdmin?: boolean;
   studentId?: string; // If provided, filter for this student
+  openForStudentId?: string; // If provided, open modal for this student
 }
 
-export default function CalendarView({ isAdmin = false, studentId }: CalendarViewProps) {
+export default function CalendarView({ isAdmin = false, studentId, openForStudentId }: CalendarViewProps) {
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,6 +39,24 @@ export default function CalendarView({ isAdmin = false, studentId }: CalendarVie
     status: "scheduled" as const,
     notes: ""
   });
+
+  useEffect(() => {
+    if (openForStudentId && isAdmin) {
+      const start = format(new Date(), "yyyy-MM-dd'T'HH:00");
+      const end = format(addHours(parseISO(start), 1), "yyyy-MM-dd'T'HH:00");
+      
+      setFormData({
+        studentId: openForStudentId,
+        workoutTitle: "",
+        start,
+        end,
+        status: "scheduled",
+        notes: ""
+      });
+      setSelectedEvent(null);
+      setIsModalOpen(true);
+    }
+  }, [openForStudentId, isAdmin]);
 
   useEffect(() => {
     const unsubSessions = storageService.subscribeToSessions((data) => {
