@@ -33,33 +33,38 @@ export default function Login({ onLogin }: LoginProps) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result.user.email === "caioweber1@gmail.com") {
-        onLogin(process.env.ADMIN_PASSWORD || "admin123");
-        toast.success("Autenticado como Admin com sucesso!");
-      } else {
-        toast.error("Acesso negado. Apenas o administrador pode entrar.");
-        await auth.signOut();
-      }
-    } catch (error: any) {
-      console.error("Erro ao entrar com Google:", error);
-      const errorCode = error.code || "unknown";
-      const errorMessage = error.message || "Erro desconhecido";
-      
-      if (errorCode === "auth/unauthorized-domain") {
-        toast.error(`Domínio não autorizado (${window.location.hostname}). Por favor, adicione este domínio na consola Firebase.`);
-      } else if (errorCode === "auth/popup-blocked") {
-        toast.error("O popup foi bloqueado pelo seu navegador. Por favor, permita popups para este site.");
-      } else {
-        toast.error(`Falha na autenticação: ${errorCode}`);
-      }
-    } finally {
-      setLoading(false);
+const handleGoogleSignIn = async () => {
+  setLoading(true);
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+
+    // Qualquer conta Google pode acessar
+    onLogin(process.env.ADMIN_PASSWORD || "admin123");
+    toast.success(`Autenticado com sucesso como ${result.user.email}`);
+
+  } catch (error: any) {
+    console.error("Erro ao entrar com Google:", error);
+
+    const errorCode = error.code || "unknown";
+    const errorMessage = error.message || "Erro desconhecido";
+
+    if (errorCode === "auth/unauthorized-domain") {
+      toast.error(
+        `Domínio não autorizado (${window.location.hostname}). Adicione este domínio no console do Firebase.`
+      );
+    } else if (errorCode === "auth/popup-blocked") {
+      toast.error(
+        "O popup foi bloqueado pelo navegador. Permita popups para este site."
+      );
+    } else {
+      toast.error(`Falha na autenticação: ${errorCode}`);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   return (
     <div className="flex min-h-screen bg-black overflow-hidden">
