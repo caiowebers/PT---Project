@@ -1,4 +1,4 @@
-import { Student, PhysicalEvaluation, BodyMeasurements, Workout, Exercise } from "../types";
+import { Student, PhysicalEvaluation, BodyMeasurements, Workout, Exercise, ClassSession } from "../types";
 import { db, handleFirestoreError, OperationType, auth, onAuthStateChanged } from "../firebase";
 import { v4 as uuidv4 } from "uuid";
 import { 
@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 
 const COLLECTION = "students";
+const SESSIONS_COLLECTION = "aulas";
 
 // Test connection to Firestore
 async function testConnection() {
@@ -157,6 +158,49 @@ export const storageService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `${COLLECTION}/${id}`);
     }
+  },
+
+  getCurrentUserId: () => {
+    return auth.currentUser?.uid;
+  },
+
+  // Session Management
+  getSessions: async (): Promise<ClassSession[]> => {
+    try {
+      const querySnapshot = await getDocs(collection(db, SESSIONS_COLLECTION));
+      return querySnapshot.docs.map(doc => doc.data() as ClassSession);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, SESSIONS_COLLECTION);
+      return [];
+    }
+  },
+
+  saveSession: async (session: ClassSession) => {
+    try {
+      const docRef = doc(db, SESSIONS_COLLECTION, session.id);
+      await setDoc(docRef, session);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${SESSIONS_COLLECTION}/${session.id}`);
+    }
+  },
+
+  deleteSession: async (id: string) => {
+    try {
+      const docRef = doc(db, SESSIONS_COLLECTION, id);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `${SESSIONS_COLLECTION}/${id}`);
+    }
+  },
+
+  subscribeToSessions: (callback: (sessions: ClassSession[]) => void) => {
+    const unsubscribe = onSnapshot(collection(db, SESSIONS_COLLECTION), (snapshot) => {
+      const sessions = snapshot.docs.map(doc => doc.data() as ClassSession);
+      callback(sessions);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, SESSIONS_COLLECTION);
+    });
+    return unsubscribe;
   },
 
   subscribeToStudents: (callback: (students: Student[]) => void) => {

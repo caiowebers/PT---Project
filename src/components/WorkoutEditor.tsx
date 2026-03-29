@@ -48,7 +48,8 @@ function SortableExerciseItem({
   restPresets,
   setSearchTerms,
   setSuggestions,
-  isHighlighted
+  isHighlighted,
+  accentColor
 }: any) {
   const [showInfo, setShowInfo] = useState(false);
   const {
@@ -70,12 +71,18 @@ function SortableExerciseItem({
     <motion.div 
       ref={setNodeRef}
       style={style}
+      initial={isHighlighted ? { scale: 0.98, opacity: 0 } : {}}
       animate={isHighlighted ? { 
-        borderColor: ["rgba(255,255,255,0.05)", "rgba(0,255,0,1)", "rgba(255,255,255,0.05)"],
-        backgroundColor: ["rgba(42,42,42,1)", "rgba(0,255,0,0.1)", "rgba(42,42,42,1)"],
-        boxShadow: ["0 10px 15px -3px rgba(0,0,0,0.1)", "0 0 30px rgba(0,255,0,0.3)", "0 10px 15px -3px rgba(0,0,0,0.1)"]
+        scale: 1,
+        opacity: 1,
+        borderColor: ["rgba(255,255,255,0.05)", accentColor, "rgba(255,255,255,0.05)"],
+        backgroundColor: ["rgba(42,42,42,1)", `${accentColor}1A`, "rgba(42,42,42,1)"],
+        boxShadow: ["0 10px 15px -3px rgba(0,0,0,0.1)", `0 0 30px ${accentColor}4D`, "0 10px 15px -3px rgba(0,0,0,0.1)"]
       } : {}}
-      transition={{ duration: 1.5, ease: "easeInOut" }}
+      transition={{ 
+        duration: isHighlighted ? 2 : 0.3, 
+        ease: "easeOut"
+      }}
       className={`group flex flex-col gap-4 p-5 rounded-2xl bg-gym-card border border-white/5 hover:border-white/10 transition-all relative ${isDragging ? 'opacity-50 ring-2 ring-neon-green/50 shadow-2xl' : 'shadow-lg shadow-black/20'}`}
     >
       {/* Header: Drag, Title, Actions */}
@@ -89,7 +96,7 @@ function SortableExerciseItem({
             <input 
               type="text" 
               value={searchTerms[exercise.id] !== undefined ? searchTerms[exercise.id] : exercise.name}
-              onChange={e => setSearchTerms(prev => ({ ...prev, [exercise.id]: e.target.value }))}
+              onChange={e => setSearchTerms(prev => ({ ...prev, [exercise.id]: (e.target as HTMLInputElement).value }))}
               onKeyDown={e => e.key === 'Enter' && handleSearch(exercise.id, searchTerms[exercise.id] || "", undefined, true)}
               placeholder="Nome do Exercício..."
               className="w-full bg-transparent border-none p-0 focus:ring-0 font-black text-xl md:text-2xl text-white placeholder:text-gray-800 transition-all uppercase tracking-tight"
@@ -101,7 +108,7 @@ function SortableExerciseItem({
             <span className="w-1 h-1 rounded-full bg-gray-800" />
             <select 
               value={exercise.category}
-              onChange={e => updateExercise(exercise.id, { category: e.target.value as any })}
+              onChange={e => updateExercise(exercise.id, { category: (e.target as HTMLSelectElement).value as any })}
               className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-widest text-gray-500 focus:ring-0 cursor-pointer hover:text-gray-300 transition-colors"
             >
               {categories.map((c: string) => <option key={c} value={c} className="bg-gym-dark">{c}</option>)}
@@ -142,7 +149,7 @@ function SortableExerciseItem({
             <input 
               type="text" 
               value={searchTerms[exercise.id] || ""}
-              onChange={e => setSearchTerms(prev => ({ ...prev, [exercise.id]: e.target.value }))}
+              onChange={e => setSearchTerms(prev => ({ ...prev, [exercise.id]: (e.target as HTMLInputElement).value }))}
               onKeyDown={e => e.key === 'Enter' && handleSearch(exercise.id, searchTerms[exercise.id] || "", undefined, true)}
               placeholder="Refinar exercício com IA..."
               className="w-full bg-gym-dark border-none rounded-xl py-2 pl-9 pr-10 focus:ring-1 focus:ring-white/10 text-xs text-gray-300 transition-all"
@@ -176,7 +183,7 @@ function SortableExerciseItem({
                 >
                   <div className="w-10 h-10 rounded-lg bg-black/20 flex items-center justify-center shrink-0">
                     {wgerService.getExerciseImage(s) ? (
-                      <img src={wgerService.getExerciseImage(s)} className="w-full h-full object-cover rounded-lg" alt="" referrerPolicy="no-referrer" />
+                      <img src={wgerService.getExerciseImage(s)} className="w-full h-full object-cover rounded-lg" alt="" referrerpolicy="no-referrer" />
                     ) : (
                       <ImageIcon className="w-4 h-4 text-gray-700" />
                     )}
@@ -248,7 +255,7 @@ function SortableExerciseItem({
               max="300"
               step="5"
               value={parseInt(exercise.rest) || 60}
-              onChange={e => updateExercise(exercise.id, { rest: `${e.target.value}s` })}
+              onChange={e => updateExercise(exercise.id, { rest: `${(e.target as HTMLInputElement).value}s` })}
               className="flex-1 h-1 bg-gym-dark rounded-full appearance-none cursor-pointer accent-white"
             />
           </div>
@@ -280,7 +287,7 @@ function SortableExerciseItem({
                   value={set.reps}
                   onChange={e => {
                     const newSets = [...(exercise.sets || [])];
-                    newSets[sIdx] = { ...set, reps: e.target.value };
+                    newSets[sIdx] = { ...set, reps: (e.target as HTMLInputElement).value };
                     updateExercise(exercise.id, { sets: newSets });
                   }}
                   className="w-8 bg-transparent border-none p-0 text-center text-xs font-bold focus:ring-0 text-white"
@@ -292,7 +299,7 @@ function SortableExerciseItem({
                   value={set.load}
                   onChange={e => {
                     const newSets = [...(exercise.sets || [])];
-                    newSets[sIdx] = { ...set, load: e.target.value };
+                    newSets[sIdx] = { ...set, load: (e.target as HTMLInputElement).value };
                     updateExercise(exercise.id, { sets: newSets });
                   }}
                   className="w-10 bg-transparent border-none p-0 text-center text-xs font-bold focus:ring-0 text-white"
@@ -662,6 +669,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                   setSearchTerms={setSearchTerms}
                   setSuggestions={setSuggestions}
                   isHighlighted={exercise.id === highlightedId}
+                  accentColor={accentColor}
                 />
               ))}
             </div>
@@ -776,7 +784,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                 src={previewImage} 
                 className="w-full h-full object-contain" 
                 alt="Preview" 
-                referrerPolicy="no-referrer"
+                referrerpolicy="no-referrer"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                   const parent = (e.target as HTMLImageElement).parentElement;

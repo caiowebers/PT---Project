@@ -49,6 +49,20 @@ export interface Workout {
   name: string; // Treino A, B, C...
   exercises: Exercise[];
   lastUpdated?: string;
+  rating?: number;
+  feedback?: string;
+}
+
+export interface ClassSession {
+  id: string;
+  studentId: string;
+  studentName: string;
+  instructorId: string;
+  workoutTitle: string;
+  start: string; // ISO string
+  end: string;   // ISO string
+  status: 'scheduled' | 'completed' | 'cancelled';
+  notes?: string;
 }
 
 export interface Student {
@@ -62,4 +76,5 @@ export interface Student {
   evaluations: PhysicalEvaluation[];
   measurements: BodyMeasurements[];
   workouts: Workout[];
+  sessions?: ClassSession[];
 }

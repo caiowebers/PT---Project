@@ -4,9 +4,11 @@ import { ArrowLeft, Save, Plus, Trash2, Dumbbell, Activity, Ruler } from "lucide
 import { motion } from "motion/react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
-import { Student, Workout, Exercise, PhysicalEvaluation, BodyMeasurements } from "../types";
+import { Student, Workout, Exercise, PhysicalEvaluation, BodyMeasurements, ClassSession } from "../types";
 import WorkoutEditor from "./WorkoutEditor";
 import { storageService } from "../services/storageService";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function StudentForm() {
   const { id } = useParams();
@@ -28,6 +30,7 @@ export default function StudentForm() {
 
   const [currentEval, setCurrentEval] = useState<Partial<PhysicalEvaluation>>({});
   const [currentMeas, setCurrentMeas] = useState<Partial<BodyMeasurements>>({});
+  const [sessions, setSessions] = useState<ClassSession[]>([]);
 
   useEffect(() => {
     const fetchStudent = async () => {
@@ -43,7 +46,17 @@ export default function StudentForm() {
     fetchStudent();
   }, [id, isEdit]);
 
-  const [activeTab, setActiveTab] = useState<"profile" | "physical" | "workouts">("profile");
+  useEffect(() => {
+    if (isEdit && id) {
+      const unsubscribe = storageService.subscribeToSessions((allSessions) => {
+        setSessions(allSessions.filter(s => s.studentId === id).sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime()));
+      });
+      return () => unsubscribe();
+    }
+  }, [id, isEdit]);
+
+  const [activeTab, setActiveTab] = useState<"profile" | "physical" | "workouts" | "timeline">("profile");
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     if (!student.name) {
@@ -51,6 +64,7 @@ export default function StudentForm() {
       return;
     }
 
+    setIsSaving(true);
     try {
       const studentToSave = {
         ...student,
@@ -64,6 +78,8 @@ export default function StudentForm() {
     } catch (error) {
       console.error("Erro ao guardar aluno:", error);
       toast.error("Erro ao guardar dados. Certifique-se que está autenticado com Google.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -97,19 +113,24 @@ export default function StudentForm() {
         </button>
         <button 
           onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-2 font-bold transition-all rounded-lg bg-neon-green text-gym-dark hover:bg-neon-green/90"
+          disabled={isSaving}
+          className="flex items-center gap-2 px-6 py-2 font-bold transition-all rounded-lg bg-neon-green text-gym-dark hover:bg-neon-green/90 disabled:opacity-50"
         >
-          <Save className="w-5 h-5" />
-          Guardar Aluno
+          {isSaving ? (
+            <div className="w-5 h-5 border-2 border-gym-dark border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Save className="w-5 h-5" />
+          )}
+          {isSaving ? "Guardando..." : "Guardar Aluno"}
         </button>
       </div>
 
-      <div className="flex gap-4 p-1 rounded-xl bg-gym-card border border-gym-border">
-        {(["profile", "physical", "workouts"] as const).map((tab) => (
+      <div className="flex gap-4 p-1 rounded-xl bg-gym-card border border-gym-border overflow-x-auto no-scrollbar">
+        {(["profile", "physical", "workouts", "timeline"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all ${
+            className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all whitespace-nowrap ${
               activeTab === tab 
                 ? "bg-neon-green text-gym-dark" 
                 : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -118,6 +139,7 @@ export default function StudentForm() {
             {tab === "profile" && "Perfil"}
             {tab === "physical" && "Avaliação"}
             {tab === "workouts" && "Treinos"}
+            {tab === "timeline" && "Histórico & Agenda"}
           </button>
         ))}
       </div>
@@ -135,7 +157,7 @@ export default function StudentForm() {
               <input 
                 type="text" 
                 value={student.name}
-                onChange={e => setStudent(prev => ({ ...prev, name: e.target.value }))}
+                onChange={e => setStudent(prev => ({ ...prev, name: (e.target as HTMLInputElement).value }))}
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
             </div>
@@ -144,7 +166,7 @@ export default function StudentForm() {
               <input 
                 type="number" 
                 value={student.age}
-                onChange={e => setStudent(prev => ({ ...prev, age: parseInt(e.target.value) }))}
+                onChange={e => setStudent(prev => ({ ...prev, age: parseInt((e.target as HTMLInputElement).value) }))}
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
             </div>
@@ -153,7 +175,7 @@ export default function StudentForm() {
               <input 
                 type="text" 
                 value={student.goal}
-                onChange={e => setStudent(prev => ({ ...prev, goal: e.target.value }))}
+                onChange={e => setStudent(prev => ({ ...prev, goal: (e.target as HTMLInputElement).value }))}
                 placeholder="Ex: Hipertrofia e emagrecimento"
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
@@ -163,7 +185,7 @@ export default function StudentForm() {
               <input 
                 type="date" 
                 value={student.startDate}
-                onChange={e => setStudent(prev => ({ ...prev, startDate: e.target.value }))}
+                onChange={e => setStudent(prev => ({ ...prev, startDate: (e.target as HTMLInputElement).value }))}
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
             </div>
@@ -172,7 +194,7 @@ export default function StudentForm() {
               <textarea 
                 rows={4}
                 value={student.notes}
-                onChange={e => setStudent(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={e => setStudent(prev => ({ ...prev, notes: (e.target as HTMLTextAreaElement).value }))}
                 placeholder="Ex: Hidratação diária: 3,255L..."
                 className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
               />
@@ -203,7 +225,7 @@ export default function StudentForm() {
                     type="number" 
                     step="0.01"
                     value={(currentEval as any)[field.key] || ""}
-                    onChange={e => setCurrentEval(prev => ({ ...prev, [field.key]: parseFloat(e.target.value) }))}
+                    onChange={e => setCurrentEval(prev => ({ ...prev, [field.key]: parseFloat((e.target as HTMLInputElement).value) }))}
                     className="w-full p-2 bg-black border border-gym-border rounded focus:border-neon-green outline-hidden"
                   />
                 </div>
@@ -233,7 +255,7 @@ export default function StudentForm() {
                     type="number" 
                     step="0.1"
                     value={(currentMeas as any)[field.key] || ""}
-                    onChange={e => setCurrentMeas(prev => ({ ...prev, [field.key]: parseFloat(e.target.value) }))}
+                    onChange={e => setCurrentMeas(prev => ({ ...prev, [field.key]: parseFloat((e.target as HTMLInputElement).value) }))}
                     className="w-full p-2 bg-black border border-gym-border rounded focus:border-neon-orange outline-hidden"
                   />
                 </div>
@@ -296,6 +318,57 @@ export default function StudentForm() {
                           setStudent(prev => ({ ...prev, workouts: newWorkouts }));
                         }} 
                       />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "timeline" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold tracking-tight">Histórico de Aulas</h3>
+            </div>
+            
+            {sessions.length === 0 ? (
+              <div className="p-12 text-center border rounded-2xl bg-black/40 border-white/5">
+                <p className="text-gray-500">Nenhuma aula agendada ou concluída.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {sessions.map(session => {
+                  const isPast = new Date(session.end) < new Date();
+                  const isCompleted = session.status === 'completed';
+                  const isCancelled = session.status === 'cancelled';
+                  
+                  return (
+                    <div key={session.id} className={`p-4 border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                      isCompleted ? 'bg-neon-green/5 border-neon-green/20' : 
+                      isCancelled ? 'bg-red-500/5 border-red-500/20' : 
+                      isPast ? 'bg-white/5 border-white/10 opacity-70' : 
+                      'bg-gym-card border-white/10'
+                    }`}>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                            isCompleted ? 'bg-neon-green/20 text-neon-green' : 
+                            isCancelled ? 'bg-red-500/20 text-red-500' : 
+                            isPast ? 'bg-gray-500/20 text-gray-400' : 
+                            'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {isCompleted ? 'Concluída' : isCancelled ? 'Cancelada' : isPast ? 'Passada' : 'Agendada'}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {format(parseISO(session.start), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-lg">{session.workoutTitle}</h4>
+                        {session.notes && (
+                          <p className="text-sm text-gray-500 mt-1">{session.notes}</p>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

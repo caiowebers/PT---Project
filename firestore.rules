@@ -48,5 +48,17 @@ service cloud.firestore {
       // Allow write for any authenticated user (Google or Anonymous)
       allow write: if isAuthenticated();
     }
+
+    // Aulas collection
+    match /aulas/{aulaId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Sessions collection (legacy)
+    match /sessions/{sessionId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
   }
 }
