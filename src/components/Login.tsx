@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Dumbbell, Lock, LogIn, Mail } from "lucide-react";
 import { motion } from "motion/react";
 import { auth, googleProvider, signInWithPopup, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "../firebase";
+import { storageService } from "../services/storageService";
 import { toast } from "sonner";
 
 interface LoginProps {
@@ -54,6 +55,10 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Create user profile in Firestore
+      await storageService.createUserProfile(result.user.uid, result.user.email || email);
+      
       onLogin(process.env.ADMIN_PASSWORD || "admin123");
       toast.success(`Conta criada com sucesso! Bem-vindo, ${result.user.email}`);
       setEmail("");
@@ -90,6 +95,13 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if user profile exists, if not create it
+      const existingProfile = await storageService.getUserProfile(result.user.uid);
+      if (!existingProfile) {
+        await storageService.createUserProfile(result.user.uid, result.user.email || email);
+      }
+      
       onLogin(process.env.ADMIN_PASSWORD || "admin123");
       toast.success(`Bem-vindo de volta, ${result.user.email}!`);
       setEmail("");
@@ -120,6 +132,16 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
+
+      // Check if user profile exists, if not create it
+      const existingProfile = await storageService.getUserProfile(result.user.uid);
+      if (!existingProfile) {
+        await storageService.createUserProfile(
+          result.user.uid,
+          result.user.email || "",
+          result.user.displayName
+        );
+      }
 
       // Qualquer conta Google pode acessar
       onLogin(process.env.ADMIN_PASSWORD || "admin123");

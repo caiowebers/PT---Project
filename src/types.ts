@@ -78,3 +78,14 @@ export interface Student {
   workouts: Workout[];
   sessions?: ClassSession[];
 }
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName?: string;
+  photoUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+  role: 'admin' | 'trainer' | 'client';
+  isActive: boolean;
+}

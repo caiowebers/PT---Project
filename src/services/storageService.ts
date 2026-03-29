@@ -1,4 +1,4 @@
-import { Student, PhysicalEvaluation, BodyMeasurements, Workout, Exercise, ClassSession } from "../types";
+import { Student, PhysicalEvaluation, BodyMeasurements, Workout, Exercise, ClassSession, UserProfile } from "../types";
 import { db, handleFirestoreError, OperationType, auth, onAuthStateChanged } from "../firebase";
 import { v4 as uuidv4 } from "uuid";
 import { 
@@ -228,5 +228,47 @@ export const storageService = {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
+  },
+
+  // User Profile Management
+  saveUserProfile: async (userProfile: UserProfile) => {
+    try {
+      const docRef = doc(db, "users", userProfile.uid);
+      await setDoc(docRef, userProfile);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${userProfile.uid}`);
+      throw error;
+    }
+  },
+
+  getUserProfile: async (uid: string): Promise<UserProfile | undefined> => {
+    try {
+      const docRef = doc(db, "users", uid);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? (docSnap.data() as UserProfile) : undefined;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `users/${uid}`);
+      return undefined;
+    }
+  },
+
+  createUserProfile: async (uid: string, email: string, displayName?: string): Promise<UserProfile> => {
+    const userProfile: UserProfile = {
+      uid,
+      email,
+      displayName: displayName || email.split('@')[0],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      role: 'client',
+      isActive: true
+    };
+
+    try {
+      await storageService.saveUserProfile(userProfile);
+      return userProfile;
+    } catch (error) {
+      console.error("Erro ao criar perfil de utilizador:", error);
+      throw error;
+    }
   }
 };

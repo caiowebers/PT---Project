@@ -19,6 +19,18 @@ service cloud.firestore {
     //   - measurements: list
     //   - workouts: list
     //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - photoUrl: string
+    //   - createdAt: string
+    //   - updatedAt: string
+    //   - role: string (admin | trainer | client)
+    //   - isActive: boolean
+    //
     // ===============================================================
 
     // ===============================================================
@@ -38,6 +50,13 @@ service cloud.firestore {
              data.id is string &&
              data.shareSlug is string &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100;
+    }
+
+    // User Profiles collection
+    match /users/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow write: if isAuthenticated() && request.auth.uid == uid;
+      allow create: if isAuthenticated();
     }
 
     // Students collection
