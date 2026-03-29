@@ -37,7 +37,8 @@ const SESSIONS_SUBCOLLECTION = "aulas";
  * Formato: users/{uid}/students
  */
 function getUserStudentsPath(uid?: string) {
-  const userId = uid || currentUser?.uid;
+  const user = currentUser || auth.currentUser;
+  const userId = uid || user?.uid;
   if (!userId) throw new Error("Utilizador não autenticado. Não é possível aceder aos dados.");
   return `users/${userId}/${STUDENTS_SUBCOLLECTION}`;
 }
@@ -47,7 +48,8 @@ function getUserStudentsPath(uid?: string) {
  * Formato: users/{uid}/aulas
  */
 function getUserSessionsPath(uid?: string) {
-  const userId = uid || currentUser?.uid;
+  const user = currentUser || auth.currentUser;
+  const userId = uid || user?.uid;
   if (!userId) throw new Error("Utilizador não autenticado. Não é possível aceder aos dados.");
   return `users/${userId}/${SESSIONS_SUBCOLLECTION}`;
 }
@@ -55,10 +57,13 @@ function getUserSessionsPath(uid?: string) {
 /**
  * Garante que o utilizador está autenticado
  * Lança erro se não houver UID
+ * Tenta currentUser primeiro, depois auth.currentUser como fallback
  */
 function ensureAuthenticated(): string {
-  if (!currentUser) throw new Error("Utilizador não autenticado.");
-  const uid = currentUser.uid;
+  // Tenta usar currentUser (global), senão usa auth.currentUser (Firebase)
+  const user = currentUser || auth.currentUser;
+  if (!user) throw new Error("Utilizador não autenticado.");
+  const uid = user.uid;
   if (!uid) throw new Error("Utilizador não autenticado.");
   return uid;
 }
