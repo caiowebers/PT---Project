@@ -50,7 +50,6 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   }, []);
 
   const isFirebaseAuthed = !!currentUser;
-  const isVerifiedAdmin = currentUser && currentUser.email === "caioweber1@gmail.com";
 
   const handleGenerateTest = async () => {
     if (!isFirebaseAuthed) {
@@ -151,11 +150,11 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
             </div>
           </div>
         )}
-        {isFirebaseAuthed && !isVerifiedAdmin && (
-          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/50 rounded-xl flex items-center gap-3 text-blue-400">
+        {isFirebaseAuthed && (
+          <div className="mb-6 p-4 bg-neon-green/10 border border-neon-green/50 rounded-xl flex items-center gap-3 text-neon-green">
             <div className="text-sm">
-              <p className="font-bold">Sessão Local Ativa</p>
-              <p>Está a usar uma sessão anónima. Os dados serão guardados, mas para segurança total e gestão multi-dispositivo, recomenda-se o login com Google Admin.</p>
+              <p className="font-bold">Sessão Admin Ativa</p>
+              <p>Bem-vindo, {currentUser?.displayName || "Administrador"}. Todos os dados estão sincronizados com a nuvem.</p>
             </div>
           </div>
         )}

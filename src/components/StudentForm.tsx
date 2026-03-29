@@ -117,9 +117,13 @@ export default function StudentForm() {
       setIsEvalModified(false);
       setIsMeasModified(false);
       navigate("/admin");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao guardar aluno:", error);
-      toast.error("Erro ao guardar dados. Certifique-se que está autenticado com Google.");
+      if (error.message?.includes("insufficient permissions")) {
+        toast.error("Erro de permissão. Certifique-se que é o proprietário destes dados.");
+      } else {
+        toast.error("Erro ao guardar dados. Verifique a sua ligação.");
+      }
     } finally {
       setIsSaving(false);
     }

@@ -156,9 +156,13 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
       await storageService.saveSession(newSession);
       toast.success(selectedEvent ? "Aula atualizada!" : "Aula agendada!");
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao guardar aula:", error);
-      toast.error("Erro ao guardar aula.");
+      if (error.message?.includes("insufficient permissions")) {
+        toast.error("Erro de permissão. Apenas o proprietário pode agendar aulas.");
+      } else {
+        toast.error("Erro ao guardar aula.");
+      }
     } finally {
       setIsSaving(false);
     }

@@ -38,6 +38,7 @@ export const storageService = {
     const shareSlug = uuidv4().slice(0, 8);
     const testStudent: Student = {
       id,
+      adminId: auth.currentUser?.uid || "anonymous",
       shareSlug,
       name: `Aluno Teste ${Math.floor(Math.random() * 1000)}`,
       age: 25 + Math.floor(Math.random() * 10),
@@ -109,7 +110,10 @@ export const storageService = {
 
   getStudents: async (): Promise<Student[]> => {
     try {
-      const querySnapshot = await getDocs(collection(db, COLLECTION));
+      const user = auth.currentUser;
+      if (!user) return [];
+      const q = query(collection(db, COLLECTION), where("adminId", "==", user.uid));
+      const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as Student);
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, COLLECTION);
@@ -144,8 +148,15 @@ export const storageService = {
 
   saveStudent: async (student: Student) => {
     try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("Usuário não autenticado");
+      
+      const studentData = {
+        ...student,
+        adminId: student.adminId || user.uid
+      };
       const docRef = doc(db, COLLECTION, student.id);
-      await setDoc(docRef, student);
+      await setDoc(docRef, studentData);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${student.id}`);
     }
@@ -167,7 +178,10 @@ export const storageService = {
   // Session Management
   getSessions: async (): Promise<ClassSession[]> => {
     try {
-      const querySnapshot = await getDocs(collection(db, SESSIONS_COLLECTION));
+      const user = auth.currentUser;
+      if (!user) return [];
+      const q = query(collection(db, SESSIONS_COLLECTION), where("instructorId", "==", user.uid));
+      const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as ClassSession);
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, SESSIONS_COLLECTION);
@@ -177,8 +191,15 @@ export const storageService = {
 
   saveSession: async (session: ClassSession) => {
     try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const sessionData = {
+        ...session,
+        instructorId: session.instructorId || user.uid
+      };
       const docRef = doc(db, SESSIONS_COLLECTION, session.id);
-      await setDoc(docRef, session);
+      await setDoc(docRef, sessionData);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `${SESSIONS_COLLECTION}/${session.id}`);
     }
@@ -194,7 +215,14 @@ export const storageService = {
   },
 
   subscribeToSessions: (callback: (sessions: ClassSession[]) => void) => {
-    const unsubscribe = onSnapshot(collection(db, SESSIONS_COLLECTION), (snapshot) => {
+    const user = auth.currentUser;
+    if (!user) {
+      callback([]);
+      return () => {};
+    }
+
+    const q = query(collection(db, SESSIONS_COLLECTION), where("instructorId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const sessions = snapshot.docs.map(doc => doc.data() as ClassSession);
       callback(sessions);
     }, (error) => {
@@ -211,9 +239,10 @@ export const storageService = {
         unsubscribeSnapshot = null;
       }
       
-      // Allow any authenticated user (Google or Anonymous) to see the list
+      // Allow any authenticated user to see their own list
       if (user) {
-        unsubscribeSnapshot = onSnapshot(collection(db, COLLECTION), (snapshot) => {
+        const q = query(collection(db, COLLECTION), where("adminId", "==", user.uid));
+        unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
           const students = snapshot.docs.map(doc => doc.data() as Student);
           callback(students);
         }, (error) => {

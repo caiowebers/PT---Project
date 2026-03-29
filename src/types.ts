@@ -57,7 +57,7 @@ export interface ClassSession {
   id: string;
   studentId: string;
   studentName: string;
-  instructorId: string;
+  instructorId: string; // This is the UID of the Personal Trainer (Admin)
   workoutTitle: string;
   start: string; // ISO string
   end: string;   // ISO string
@@ -68,6 +68,7 @@ export interface ClassSession {
 
 export interface Student {
   id: string;
+  adminId: string; // This is the UID of the Personal Trainer (Admin)
   shareSlug: string;
   name: string;
   age: number;

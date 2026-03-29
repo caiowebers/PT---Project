@@ -21,14 +21,16 @@ export default function App() {
       if (user) {
         setIsAdmin(true);
         localStorage.setItem("gymflow_admin", "true");
+      } else {
+        setIsAdmin(false);
+        localStorage.removeItem("gymflow_admin");
       }
     });
     return () => unsubscribe();
   }, []);
 
   const handleLogin = () => {
-    setIsAdmin(true);
-    localStorage.setItem("gymflow_admin", "true");
+    // This will be handled by onAuthStateChanged if login is successful
   };
 
   const handleLogout = async () => {

@@ -28,14 +28,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.email == "caioweber1@gmail.com");
+    function isOwner(ownerId) {
+      return isAuthenticated() && request.auth.uid == ownerId;
     }
 
     function isValidStudent(data) {
-      return data.keys().hasAll(['id', 'shareSlug', 'name']) &&
+      return data.keys().hasAll(['id', 'adminId', 'shareSlug', 'name']) &&
              data.id is string &&
+             data.adminId is string &&
              data.shareSlug is string &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100;
     }
@@ -51,23 +51,38 @@ service cloud.firestore {
 
     // Students collection
     match /students/{studentId} {
-      // Allow read for everyone
+      // Allow read for everyone (for sharing)
       allow read: if true;
       
-      // Allow write for admin only
-      allow write: if isAdmin();
+      // Allow create if authenticated and setting self as admin
+      allow create: if isAuthenticated() && 
+                    request.resource.data.adminId == request.auth.uid &&
+                    isValidStudent(request.resource.data);
+      
+      // Allow delete if owner
+      allow delete: if isOwner(resource.data.adminId);
+      
+      // Allow update for owner OR for students submitting feedback
+      allow update: if isOwner(resource.data.adminId) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['workouts']) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.shareSlug == resource.data.shareSlug &&
+        request.resource.data.adminId == resource.data.adminId
+      );
     }
 
     // Aulas collection
     match /aulas/{aulaId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.instructorId == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.instructorId);
     }
 
     // Sessions collection (legacy)
     match /sessions/{sessionId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.instructorId == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.instructorId);
     }
   }
 }

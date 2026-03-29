@@ -6,6 +6,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "adminId": { "type": "string", "description": "UID of the Personal Trainer who owns this student." },
         "shareSlug": { "type": "string" },
         "name": { "type": "string" },
         "age": { "type": "number" },
@@ -16,13 +17,35 @@
         "measurements": { "type": "array" },
         "workouts": { "type": "array" }
       },
-      "required": ["id", "shareSlug", "name"]
+      "required": ["id", "adminId", "shareSlug", "name"]
+    },
+    "ClassSession": {
+      "title": "ClassSession",
+      "description": "A scheduled class session for a student.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "instructorId": { "type": "string", "description": "UID of the Personal Trainer who owns this session." },
+        "workoutTitle": { "type": "string" },
+        "start": { "type": "string" },
+        "end": { "type": "string" },
+        "status": { "type": "string", "enum": ["scheduled", "completed", "cancelled"] },
+        "notes": { "type": "string" },
+        "googleEventId": { "type": "string" }
+      },
+      "required": ["id", "studentId", "instructorId", "start", "end", "status"]
     }
   },
   "firestore": {
     "/students/{studentId}": {
       "schema": "Student",
-      "description": "Collection of students managed by the admin."
+      "description": "Collection of students managed by Personal Trainers."
+    },
+    "/aulas/{aulaId}": {
+      "schema": "ClassSession",
+      "description": "Collection of class sessions managed by Personal Trainers."
     }
   }
 }
