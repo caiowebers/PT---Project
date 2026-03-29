@@ -57,7 +57,12 @@ export default function Login({ onLogin }: LoginProps) {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       
       // Create user profile in Firestore
-      await storageService.createUserProfile(result.user.uid, result.user.email || email);
+      try {
+        await storageService.createUserProfile(result.user.uid, result.user.email || email);
+      } catch (profileError) {
+        console.error("Aviso ao criar perfil:", profileError);
+        // Allow registration to proceed even if profile creation fails
+      }
       
       onLogin(process.env.ADMIN_PASSWORD || "admin123");
       toast.success(`Conta criada com sucesso! Bem-vindo, ${result.user.email}`);
@@ -67,7 +72,7 @@ export default function Login({ onLogin }: LoginProps) {
       setError(false);
     } catch (error: any) {
       const errorCode = error.code || "unknown";
-      console.error("Erro ao registar:", errorCode, error.message);
+      console.error("Erro ao registar - Código:", errorCode, "Mensagem:", error.message);
       
       if (errorCode === "auth/email-already-in-use") {
         toast.error("Este email já está registado. Tente entrar no seu conta.");
@@ -75,8 +80,12 @@ export default function Login({ onLogin }: LoginProps) {
         toast.error("Email inválido!");
       } else if (errorCode === "auth/weak-password") {
         toast.error("Password muito fraca. Use pelo menos 6 caracteres.");
+      } else if (errorCode === "auth/too-many-requests") {
+        toast.error("Muitas tentativas. Tente novamente mais tarde.");
+      } else if (errorCode === "auth/operation-not-allowed") {
+        toast.error("Este método de autenticação não está ativado. Contacte o suporte.");
       } else {
-        toast.error(`Erro ao registar: ${errorCode}`);
+        toast.error(`Erro ao registar: ${error.message || errorCode}`);
       }
       setError(true);
     } finally {
@@ -97,9 +106,20 @@ export default function Login({ onLogin }: LoginProps) {
       const result = await signInWithEmailAndPassword(auth, email, password);
       
       // Check if user profile exists, if not create it
-      const existingProfile = await storageService.getUserProfile(result.user.uid);
-      if (!existingProfile) {
-        await storageService.createUserProfile(result.user.uid, result.user.email || email);
+      try {
+        const existingProfile = await storageService.getUserProfile(result.user.uid);
+        if (!existingProfile) {
+          await storageService.createUserProfile(result.user.uid, result.user.email || email);
+        }
+      } catch (profileError) {
+        // If profile fetch/create fails, try to create it
+        console.warn("Aviso ao carregar perfil:", profileError);
+        try {
+          await storageService.createUserProfile(result.user.uid, result.user.email || email);
+        } catch (createError) {
+          console.error("Erro ao criar perfil:", createError);
+          // Allow login to proceed even if profile creation fails
+        }
       }
       
       onLogin(process.env.ADMIN_PASSWORD || "admin123");
@@ -109,7 +129,7 @@ export default function Login({ onLogin }: LoginProps) {
       setError(false);
     } catch (error: any) {
       const errorCode = error.code || "unknown";
-      console.error("Erro ao entrar:", errorCode, error.message);
+      console.error("Erro ao entrar - Código:", errorCode, "Mensagem:", error.message);
       
       if (errorCode === "auth/user-not-found") {
         toast.error("Conta não encontrada. Registre-se primeiro!");
@@ -119,8 +139,12 @@ export default function Login({ onLogin }: LoginProps) {
         toast.error("Email inválido!");
       } else if (errorCode === "auth/invalid-credential") {
         toast.error("Credenciais inválidas!");
+      } else if (errorCode === "auth/too-many-requests") {
+        toast.error("Muitas tentativas falhadas. Tente novamente mais tarde.");
+      } else if (errorCode === "auth/operation-not-allowed") {
+        toast.error("Este método de autenticação não está ativado. Contacte o suporte.");
       } else {
-        toast.error(`Erro ao entrar: ${errorCode}`);
+        toast.error(`Erro ao entrar: ${error.message || errorCode}`);
       }
       setError(true);
     } finally {
@@ -134,13 +158,27 @@ export default function Login({ onLogin }: LoginProps) {
       const result = await signInWithPopup(auth, googleProvider);
 
       // Check if user profile exists, if not create it
-      const existingProfile = await storageService.getUserProfile(result.user.uid);
-      if (!existingProfile) {
-        await storageService.createUserProfile(
-          result.user.uid,
-          result.user.email || "",
-          result.user.displayName
-        );
+      try {
+        const existingProfile = await storageService.getUserProfile(result.user.uid);
+        if (!existingProfile) {
+          await storageService.createUserProfile(
+            result.user.uid,
+            result.user.email || "",
+            result.user.displayName
+          );
+        }
+      } catch (profileError) {
+        console.warn("Aviso ao carregar perfil Google:", profileError);
+        try {
+          await storageService.createUserProfile(
+            result.user.uid,
+            result.user.email || "",
+            result.user.displayName
+          );
+        } catch (createError) {
+          console.error("Erro ao criar perfil Google:", createError);
+          // Allow login to proceed even if profile creation fails
+        }
       }
 
       // Qualquer conta Google pode acessar
@@ -148,7 +186,7 @@ export default function Login({ onLogin }: LoginProps) {
       toast.success(`Autenticado com sucesso como ${result.user.email}`);
 
     } catch (error: any) {
-      console.error("Erro ao entrar com Google:", error);
+      console.error("Erro ao entrar com Google - Código:", error.code, "Mensagem:", error.message);
 
       const errorCode = error.code || "unknown";
       const errorMessage = error.message || "Erro desconhecido";
@@ -161,8 +199,12 @@ export default function Login({ onLogin }: LoginProps) {
         toast.error(
           "O popup foi bloqueado pelo navegador. Permita popups para este site."
         );
+      } else if (errorCode === "auth/cancelled-popup-request") {
+        toast.error("Login cancelado pelo utilizador.");
+      } else if (errorCode === "auth/operation-not-allowed") {
+        toast.error("Autenticação Google não está ativada. Contacte o suporte.");
       } else {
-        toast.error(`Falha na autenticação: ${errorCode}`);
+        toast.error(`Falha na autenticação: ${errorMessage}`);
       }
     } finally {
       setLoading(false);

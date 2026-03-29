@@ -245,9 +245,13 @@ export const storageService = {
     try {
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
-      return docSnap.exists() ? (docSnap.data() as UserProfile) : undefined;
+      if (docSnap.exists()) {
+        return docSnap.data() as UserProfile;
+      }
+      return undefined;
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `users/${uid}`);
+      console.warn(`Aviso ao ler perfil do utilizador ${uid}:`, error);
+      // Don't throw - allow graceful degradation
       return undefined;
     }
   },
@@ -265,9 +269,10 @@ export const storageService = {
 
     try {
       await storageService.saveUserProfile(userProfile);
+      console.log(`✓ Perfil criado com sucesso para: ${email}`);
       return userProfile;
     } catch (error) {
-      console.error("Erro ao criar perfil de utilizador:", error);
+      console.error(`✗ Erro ao criar perfil para ${email}:`, error);
       throw error;
     }
   }
