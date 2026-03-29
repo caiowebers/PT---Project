@@ -62,9 +62,25 @@ function getUserSessionsPath(uid?: string) {
 function ensureAuthenticated(): string {
   // Tenta usar currentUser (global), senão usa auth.currentUser (Firebase)
   const user = currentUser || auth.currentUser;
-  if (!user) throw new Error("Utilizador não autenticado.");
+  console.log(`[ensureAuthenticated] currentUser:`, currentUser);
+  console.log(`[ensureAuthenticated] auth.currentUser:`, auth.currentUser);
+  console.log(`[ensureAuthenticated] user:`, user);
+  
+  if (!user) {
+    const errorMsg = "Utilizador não autenticado.";
+    console.error(`[ensureAuthenticated] ERROR: ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+  
   const uid = user.uid;
-  if (!uid) throw new Error("Utilizador não autenticado.");
+  console.log(`[ensureAuthenticated] uid:`, uid);
+  
+  if (!uid) {
+    const errorMsg = "Utilizador não autenticado - sem UID.";
+    console.error(`[ensureAuthenticated] ERROR: ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+  
   return uid;
 }
 
