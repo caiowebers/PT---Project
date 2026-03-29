@@ -14,6 +14,17 @@ import {
   getDocFromServer
 } from "firebase/firestore";
 
+// ============================================================================
+// Global State
+// ============================================================================
+let currentUser: any = null;
+
+// Monitor auth state changes and update currentUser
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  console.log(`✓ Estado de autenticação atualizado: ${user ? user.email : 'Desconectado'}`);
+});
+
 const STUDENTS_SUBCOLLECTION = "students";
 const SESSIONS_SUBCOLLECTION = "aulas";
 
@@ -26,7 +37,7 @@ const SESSIONS_SUBCOLLECTION = "aulas";
  * Formato: users/{uid}/students
  */
 function getUserStudentsPath(uid?: string) {
-  const userId = uid || auth.currentUser?.uid;
+  const userId = uid || currentUser?.uid;
   if (!userId) throw new Error("Utilizador não autenticado. Não é possível aceder aos dados.");
   return `users/${userId}/${STUDENTS_SUBCOLLECTION}`;
 }
@@ -36,7 +47,7 @@ function getUserStudentsPath(uid?: string) {
  * Formato: users/{uid}/aulas
  */
 function getUserSessionsPath(uid?: string) {
-  const userId = uid || auth.currentUser?.uid;
+  const userId = uid || currentUser?.uid;
   if (!userId) throw new Error("Utilizador não autenticado. Não é possível aceder aos dados.");
   return `users/${userId}/${SESSIONS_SUBCOLLECTION}`;
 }
@@ -46,7 +57,8 @@ function getUserSessionsPath(uid?: string) {
  * Lança erro se não houver UID
  */
 function ensureAuthenticated(): string {
-  const uid = auth.currentUser?.uid;
+  if (!currentUser) throw new Error("Utilizador não autenticado.");
+  const uid = currentUser.uid;
   if (!uid) throw new Error("Utilizador não autenticado.");
   return uid;
 }
@@ -215,7 +227,8 @@ export const storageService = {
   },
 
   getCurrentUserId: () => {
-    return auth.currentUser?.uid;
+    if (!currentUser) return null;
+    return currentUser.uid;
   },
 
   // ============================================================================
