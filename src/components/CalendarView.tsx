@@ -153,7 +153,19 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
         }
       }
 
-      await storageService.saveSession(newSession);
+      if (selectedEvent) {
+        await storageService.saveSession(newSession);
+      } else {
+        await storageService.salvarAula(
+          formData.studentId, 
+          formData.start, 
+          formData.end, 
+          student.name, 
+          formData.workoutTitle, 
+          formData.notes,
+          newSession.googleEventId
+        );
+      }
       toast.success(selectedEvent ? "Aula atualizada!" : "Aula agendada!");
       setIsModalOpen(false);
     } catch (error: any) {

@@ -7,6 +7,7 @@ import {
   getDoc, 
   getDocs, 
   setDoc, 
+  addDoc,
   deleteDoc, 
   query, 
   where,
@@ -205,6 +206,32 @@ export const storageService = {
     }
   },
 
+  salvarAula: async (studentId: string, start: any, end: any, studentName: string, workoutTitle: string, notes?: string, googleEventId?: string) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const id = uuidv4();
+      const aula = {
+        id,
+        studentId,
+        studentName,
+        instructorId: user.uid,
+        workoutTitle,
+        start: start.toISOString ? start.toISOString() : String(start),
+        end: end.toISOString ? end.toISOString() : String(end),
+        status: "scheduled",
+        notes: notes || "",
+        googleEventId: googleEventId || ""
+      };
+
+      await setDoc(doc(db, SESSIONS_COLLECTION, id), aula);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, SESSIONS_COLLECTION);
+      throw error;
+    }
+  },
+
   deleteSession: async (id: string) => {
     try {
       const docRef = doc(db, SESSIONS_COLLECTION, id);
@@ -215,20 +242,30 @@ export const storageService = {
   },
 
   subscribeToSessions: (callback: (sessions: ClassSession[]) => void) => {
-    const user = auth.currentUser;
-    if (!user) {
-      callback([]);
-      return () => {};
-    }
-
-    const q = query(collection(db, SESSIONS_COLLECTION), where("instructorId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const sessions = snapshot.docs.map(doc => doc.data() as ClassSession);
-      callback(sessions);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, SESSIONS_COLLECTION);
+    let unsubscribeSnapshot: (() => void) | null = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+      
+      if (user) {
+        const q = query(collection(db, SESSIONS_COLLECTION), where("instructorId", "==", user.uid));
+        unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+          const sessions = snapshot.docs.map(doc => doc.data() as ClassSession);
+          callback(sessions);
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, SESSIONS_COLLECTION);
+        });
+      } else {
+        callback([]);
+      }
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
   },
 
   subscribeToStudents: (callback: (students: Student[]) => void) => {
