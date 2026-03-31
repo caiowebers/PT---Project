@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { 
   Check,
@@ -8,42 +8,132 @@ import {
   ChevronDown,
   Calendar as CalendarIcon,
   Activity,
-  Dumbbell
+  Dumbbell,
+  ExternalLink,
+  Info,
+  Loader2,
+  MessageSquare,
+  Sparkles,
+  TrendingUp,
+  Scale,
+  Target
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
-import { Student, ClassSession } from "../types";
+import { Student, ClassSession, Exercise, AdminSettings } from "../types";
 import { storageService } from "../services/storageService";
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay } from "date-fns";
+import { wgerService } from "../services/wgerService";
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay, addHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'recharts';
 
 export default function ClientView() {
   const { shareSlug } = useParams();
   const [student, setStudent] = useState<Student | null>(null);
   const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"saude" | "treino" | "agenda">("agenda");
+  const [aiDescriptions, setAiDescriptions] = useState<Record<string, string>>({});
+  const [generatingDesc, setGeneratingDesc] = useState<Record<string, boolean>>({});
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [requestData, setRequestData] = useState({
+    date: format(new Date(), "yyyy-MM-dd"),
+    time: "09:00",
+    notes: ""
+  });
+  const [isRequesting, setIsRequesting] = useState(false);
   
   // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   useEffect(() => {
+    let unsubscribeSessions: (() => void) | null = null;
+
     const fetchStudent = async () => {
       if (shareSlug) {
         setLoading(true);
         const data = await storageService.getStudentBySlug(shareSlug);
         if (data) {
           setStudent(data);
-          // Fetch sessions for this student
-          const allSessions = await storageService.getSessions();
-          setSessions(allSessions.filter(s => s.studentId === data.id));
+          
+          // Subscribe to sessions for this student in real-time
+          unsubscribeSessions = storageService.subscribeToStudentSessions(data.id, (sessionsData) => {
+            setSessions(sessionsData);
+          });
+
+          // Fetch admin settings for the logo
+          if (data.adminId) {
+            const settings = await storageService.getAdminSettings(data.adminId);
+            if (settings) {
+              setAdminSettings(settings);
+            }
+          }
         }
         setLoading(false);
       }
     };
     fetchStudent();
+
+    return () => {
+      if (unsubscribeSessions) unsubscribeSessions();
+    };
   }, [shareSlug]);
+
+  const generateDescription = async (exercise: Exercise) => {
+    if (aiDescriptions[exercise.id] || generatingDesc[exercise.id]) return;
+    
+    setGeneratingDesc(prev => ({ ...prev, [exercise.id]: true }));
+    try {
+      const desc = await wgerService.generateExerciseDescription(exercise.name);
+      setAiDescriptions(prev => ({ ...prev, [exercise.id]: desc }));
+    } catch (error) {
+      console.error("Error generating description:", error);
+    } finally {
+      setGeneratingDesc(prev => ({ ...prev, [exercise.id]: false }));
+    }
+  };
+
+  const handleRequestSession = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!student) return;
+
+    setIsRequesting(true);
+    try {
+      const start = parseISO(`${requestData.date}T${requestData.time}`);
+      const end = addHours(start, 1);
+      
+      await storageService.salvarAula(
+        student.id,
+        start,
+        end,
+        student.name,
+        "Solicitação de Treino",
+        requestData.notes,
+        "",
+        "pending"
+      );
+      
+      toast.success("Solicitação enviada ao instrutor!");
+      setIsRequestModalOpen(false);
+    } catch (error) {
+      console.error("Error requesting session:", error);
+      toast.error("Falha ao enviar solicitação.");
+    } finally {
+      setIsRequesting(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center bg-gym-bg">
@@ -75,32 +165,45 @@ export default function ClientView() {
     <div className="min-h-screen bg-gym-bg pb-32 font-sans text-gym-text relative">
       {/* Header - Red Background */}
       <div className="bg-gym-red h-48 w-full rounded-b-3xl relative flex items-center justify-center">
-        {/* Placeholder for Logo */}
-        <div className="text-white text-center font-black uppercase tracking-tighter leading-tight">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <div className="w-8 h-4 border-t-4 border-b-4 border-white relative">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-white" />
-            </div>
+        {adminSettings?.logoUrl ? (
+          <div className="max-w-[200px] max-h-[100px] flex items-center justify-center">
+            <img src={adminSettings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <div className="text-2xl">PABLO BATISTA</div>
-          <div className="text-[10px] tracking-widest font-medium">PERSONAL TRAINER</div>
-        </div>
+        ) : (
+          <div className="text-white text-center font-black uppercase tracking-tighter leading-tight">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="w-8 h-4 border-t-4 border-b-4 border-white relative">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-white" />
+              </div>
+            </div>
+            <div className="text-2xl">{adminSettings?.instructorName || "PABLO BATISTA"}</div>
+            <div className="text-[10px] tracking-widest font-medium">PERSONAL TRAINER</div>
+          </div>
+        )}
       </div>
 
       {/* Student Info Card */}
       <div className="px-6 -mt-16 relative z-10">
         <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex items-center gap-6">
-          <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-200 flex-shrink-0">
-            <img 
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}&backgroundColor=e2e8f0`} 
-              alt={student.name}
-              className="w-full h-full object-cover"
-            />
+          <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 border-white shadow-sm">
+            {student.photoUrl ? (
+              <img 
+                src={student.photoUrl} 
+                alt={student.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <img 
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}&backgroundColor=e2e8f0`} 
+                alt={student.name}
+                className="w-full h-full object-cover"
+              />
+            )}
           </div>
           <div className="font-mono text-sm leading-relaxed text-gray-800">
             <div className="font-bold text-lg mb-1">{student.name}</div>
-            <div className="text-gray-500">{student.age} anos</div>
-            <div className="text-gray-500">{student.goal}</div>
+            <div className="text-gray-600">{student.age} anos</div>
+            <div className="text-gray-600">{student.goal}</div>
           </div>
         </div>
       </div>
@@ -123,19 +226,119 @@ export default function ClientView() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col items-center justify-center text-center">
                   <div className="text-gym-muted text-xs font-medium mb-1 uppercase tracking-wider">Peso</div>
-                  <div className="text-3xl font-bold text-gray-800">{student.evaluations?.[0]?.weight || "--"} <span className="text-sm font-medium text-gray-400">kg</span></div>
+                  <div className="text-3xl font-bold text-gray-800">{student.evaluations?.[student.evaluations.length - 1]?.weight || "--"} <span className="text-sm font-medium text-gray-400">kg</span></div>
                 </div>
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col items-center justify-center text-center">
                   <div className="text-gym-muted text-xs font-medium mb-1 uppercase tracking-wider">Altura</div>
-                  <div className="text-3xl font-bold text-gray-800">{student.evaluations?.[0]?.height || "--"} <span className="text-sm font-medium text-gray-400">cm</span></div>
+                  <div className="text-3xl font-bold text-gray-800">{student.evaluations?.[student.evaluations.length - 1]?.height || "--"} <span className="text-sm font-medium text-gray-400">cm</span></div>
                 </div>
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col items-center justify-center text-center">
                   <div className="text-gym-muted text-xs font-medium mb-1 uppercase tracking-wider">IMC</div>
-                  <div className="text-3xl font-bold text-gray-800">{student.evaluations?.[0]?.bmi || "--"}</div>
+                  <div className="text-3xl font-bold text-gray-800">{student.evaluations?.[student.evaluations.length - 1]?.bmi || "--"}</div>
                 </div>
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col items-center justify-center text-center">
                   <div className="text-gym-muted text-xs font-medium mb-1 uppercase tracking-wider">Gordura</div>
-                  <div className="text-3xl font-bold text-gray-800">-- <span className="text-sm font-medium text-gray-400">%</span></div>
+                  <div className="text-3xl font-bold text-gray-800">{student.evaluations?.[student.evaluations.length - 1]?.bodyFat || "--"} <span className="text-sm font-medium text-gray-400">%</span></div>
+                </div>
+              </div>
+
+              {/* Feedback Section */}
+              {student.personalFeedback && (
+                <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-gym-red" />
+                    Feedback do Personal
+                  </h3>
+                  <p className="text-sm text-gray-700 leading-relaxed italic">
+                    "{student.personalFeedback}"
+                  </p>
+                </div>
+              )}
+
+              {/* AI Insights Section */}
+              {student.healthInsights && (
+                <div className="bg-red-50 rounded-[32px] p-6 border border-red-100 space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-gym-red flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Insights de Saúde (IA)
+                  </h3>
+                  <div className="text-sm text-red-900 leading-relaxed space-y-2">
+                    {student.healthInsights.split('\n').map((line, i) => (
+                      <p key={i}>{line}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Charts Section */}
+              <div className="space-y-6">
+                <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-gym-red" />
+                      Evolução de Peso
+                    </h3>
+                  </div>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={student.evaluations}>
+                        <defs>
+                          <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#E31C25" stopOpacity={0.1}/>
+                            <stop offset="95%" stopColor="#E31C25" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{fontSize: 10, fill: '#9ca3af'}} 
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(val) => format(parseISO(val), 'dd/MM')}
+                        />
+                        <YAxis 
+                          tick={{fontSize: 10, fill: '#9ca3af'}} 
+                          axisLine={false}
+                          tickLine={false}
+                          domain={['dataMin - 5', 'dataMax + 5']}
+                        />
+                        <Tooltip 
+                          contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                          labelFormatter={(val) => format(parseISO(val), 'dd/MM/yyyy')}
+                        />
+                        <Area type="monotone" dataKey="weight" stroke="#E31C25" strokeWidth={3} fillOpacity={1} fill="url(#colorWeight)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-gym-red" />
+                      Composição Corporal
+                    </h3>
+                  </div>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={student.evaluations}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{fontSize: 10, fill: '#9ca3af'}} 
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(val) => format(parseISO(val), 'dd/MM')}
+                        />
+                        <YAxis tick={{fontSize: 10, fill: '#9ca3af'}} axisLine={false} tickLine={false} />
+                        <Tooltip 
+                          contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                        />
+                        <Line type="monotone" dataKey="bodyFat" name="Gordura (%)" stroke="#f97316" strokeWidth={3} dot={{r: 4, fill: '#f97316'}} />
+                        <Line type="monotone" dataKey="muscleMass" name="Massa Muscular (kg)" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -164,13 +367,55 @@ export default function ClientView() {
                     </div>
                     <div className="space-y-3">
                       {workout.exercises.map((exercise, index) => (
-                        <div key={exercise.id} className="flex items-center gap-4 p-3 rounded-2xl bg-gray-50">
-                          <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center font-bold text-gray-400 flex-shrink-0">
-                            {index + 1}
+                        <div key={exercise.id} className="p-4 rounded-2xl bg-gray-50 space-y-3">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center font-bold text-gray-400 flex-shrink-0 text-sm">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-gray-800 text-sm truncate">{exercise.name}</div>
+                              <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{exercise.reps} • {exercise.rest}</div>
+                            </div>
+                            <a 
+                              href={`https://www.google.com/search?q=${encodeURIComponent(exercise.name)}+exercise&tbm=isch`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                              title="Ver Exemplo"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
                           </div>
-                          <div>
-                            <div className="font-bold text-gray-800 text-sm">{exercise.name}</div>
-                            <div className="text-xs text-gray-500 mt-0.5">{exercise.reps} • {exercise.rest}</div>
+
+                          <div className="pt-3 border-t border-gray-200/50">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
+                                <Info className="w-3 h-3" /> Instruções IA
+                              </span>
+                              {!aiDescriptions[exercise.id] && !generatingDesc[exercise.id] && (
+                                <button 
+                                  onClick={() => generateDescription(exercise)}
+                                  className="text-[9px] font-bold text-gym-red hover:underline"
+                                >
+                                  Gerar
+                                </button>
+                              )}
+                            </div>
+                            
+                            {generatingDesc[exercise.id] ? (
+                              <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium italic">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Gerando instruções personalizadas...
+                              </div>
+                            ) : aiDescriptions[exercise.id] ? (
+                              <p className="text-[11px] text-gray-600 leading-relaxed italic">
+                                "{aiDescriptions[exercise.id]}"
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-gray-400 italic">
+                                Clique em gerar para ver como executar.
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -195,7 +440,10 @@ export default function ClientView() {
             >
               <div className="flex items-center justify-between px-2">
                 <h2 className="text-lg font-bold text-gray-800">Meu Calendário</h2>
-                <button className="bg-white px-6 py-2 rounded-full text-sm font-medium shadow-sm border border-gray-100 text-gray-700 hover:bg-gray-50 transition-colors">
+                <button 
+                  onClick={() => setIsRequestModalOpen(true)}
+                  className="bg-gym-red px-6 py-2 rounded-full text-sm font-bold shadow-md shadow-red-500/20 text-white hover:bg-red-800 transition-all"
+                >
                   Marcar
                 </button>
               </div>
@@ -260,7 +508,7 @@ export default function ClientView() {
                     <div key={session.id} className="bg-white rounded-[32px] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         {/* Time Column */}
-                        <div className="flex flex-col items-center justify-between h-16 text-xs font-medium text-gray-500 relative">
+                        <div className="flex flex-col items-center justify-between h-16 text-xs font-medium text-gray-600 relative">
                           <div>{format(start, "HH:mm")}</div>
                           <div className="w-px h-6 bg-gray-200 my-1" />
                           <div className="text-gym-red font-bold">{format(end, "HH:mm")}</div>
@@ -269,7 +517,7 @@ export default function ClientView() {
                         {/* Details */}
                         <div>
                           <h3 className="font-bold text-gray-900 text-base">{session.workoutTitle || "Sessão de Treino"}</h3>
-                          <p className="text-xs text-gray-500 mt-1 capitalize">
+                          <p className="text-xs text-gray-600 mt-1 capitalize">
                             {format(start, "EEEE, d 'de' MMMM", { locale: ptBR })}
                           </p>
                         </div>
@@ -308,14 +556,14 @@ export default function ClientView() {
                   <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex items-center justify-between opacity-60">
                     <div className="flex items-center gap-4">
                       {/* Mock Data for visual matching if no sessions exist */}
-                      <div className="flex flex-col items-center justify-between h-16 text-xs font-medium text-gray-500 relative">
+                      <div className="flex flex-col items-center justify-between h-16 text-xs font-medium text-gray-600 relative">
                         <div>08:00</div>
                         <div className="w-px h-6 bg-gray-200 my-1" />
                         <div className="text-gym-red font-bold">09:00</div>
                       </div>
                       <div>
                         <h3 className="font-bold text-gray-900 text-base">Nenhuma aula hoje</h3>
-                        <p className="text-xs text-gray-500 mt-1">Selecione outra data</p>
+                        <p className="text-xs text-gray-600 mt-1">Selecione outra data</p>
                       </div>
                     </div>
                   </div>
@@ -326,25 +574,89 @@ export default function ClientView() {
         </AnimatePresence>
       </div>
 
+      {/* Session Request Modal */}
+      <AnimatePresence>
+        {isRequestModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <h3 className="text-xl font-bold text-gray-900">Solicitar Treino</h3>
+                <button onClick={() => setIsRequestModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-full transition-all">
+                  <X className="w-6 h-6 text-gray-500" />
+                </button>
+              </div>
+
+              <form onSubmit={handleRequestSession} className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase">Data</label>
+                  <input
+                    type="date"
+                    value={requestData.date}
+                    onChange={(e) => setRequestData({ ...requestData, date: (e.target as HTMLInputElement).value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-gym-red"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase">Hora</label>
+                  <input
+                    type="time"
+                    value={requestData.time}
+                    onChange={(e) => setRequestData({ ...requestData, time: (e.target as HTMLInputElement).value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-gym-red"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase">Observações</label>
+                  <textarea
+                    value={requestData.notes}
+                    onChange={(e) => setRequestData({ ...requestData, notes: (e.target as HTMLTextAreaElement).value })}
+                    placeholder="Algum recado para o instrutor?"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-gym-red h-24 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isRequesting}
+                  className="w-full py-4 bg-gym-red text-white rounded-2xl font-bold hover:bg-red-800 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isRequesting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                  {isRequesting ? "Enviando..." : "Enviar Solicitação"}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Bottom Navigation Pill */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.08)] px-2 py-2 flex items-center justify-between text-xs font-medium z-50 border border-gray-100">
         <button 
           onClick={() => setActiveTab("saude")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "saude" ? "bg-red-50 text-gym-red" : "text-gray-500 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "saude" ? "bg-red-50 text-gym-red" : "text-gray-600 hover:bg-gray-50"}`}
         >
           <Activity className="w-4 h-4" />
           <span className={`${activeTab === "saude" ? "block" : "hidden sm:block"}`}>Saúde</span>
         </button>
         <button 
           onClick={() => setActiveTab("treino")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "treino" ? "bg-red-50 text-gym-red" : "text-gray-500 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "treino" ? "bg-red-50 text-gym-red" : "text-gray-600 hover:bg-gray-50"}`}
         >
           <Dumbbell className="w-4 h-4" />
           <span className={`${activeTab === "treino" ? "block" : "hidden sm:block"}`}>Treino</span>
         </button>
         <button 
           onClick={() => setActiveTab("agenda")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "agenda" ? "bg-red-50 text-gym-red" : "text-gray-500 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "agenda" ? "bg-red-50 text-gym-red" : "text-gray-600 hover:bg-gray-50"}`}
         >
           <CalendarIcon className="w-4 h-4" />
           <span className={`${activeTab === "agenda" ? "block" : "hidden sm:block"}`}>Agenda</span>

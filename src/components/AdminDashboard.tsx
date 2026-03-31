@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
-import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar, AlertTriangle, Beaker, Fingerprint, Star, MessageSquare, X, CalendarDays } from "lucide-react";
+import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar, AlertTriangle, Beaker, Fingerprint, Star, MessageSquare, X, CalendarDays, Settings, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import StudentForm from "./StudentForm";
-import { Student, Workout } from "../types";
+import { Student, Workout, AdminSettings } from "../types";
 import { storageService } from "../services/storageService";
 import { auth, onAuthStateChanged } from "../firebase";
 import WorkoutEditor from "./WorkoutEditor";
@@ -22,8 +22,10 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedStudentForProgress, setSelectedStudentForProgress] = useState<Student | null>(null);
-  const [activeTab, setActiveTab] = useState<"students" | "workouts" | "agenda">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "workouts" | "agenda" | "settings">("students");
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+  const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   useEffect(() => {
     if (location.state?.openCalendarForStudent) {
@@ -34,8 +36,16 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   }, [location.state]);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      if (user) {
+        const settings = await storageService.getAdminSettings(user.uid);
+        if (settings) {
+          setAdminSettings(settings);
+        } else {
+          setAdminSettings({ id: user.uid });
+        }
+      }
     });
 
     const unsubscribeStudents = storageService.subscribeToStudents((data) => {
@@ -109,28 +119,35 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
         <nav className="space-y-2">
           <button 
             onClick={() => setActiveTab("students")}
-            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'students' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-500 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'students' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
           >
             <Users className="w-5 h-5" />
             <span>Alunos</span>
           </button>
           <button 
             onClick={() => setActiveTab("workouts")}
-            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'workouts' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-500 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'workouts' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
           >
             <TrendingUp className="w-5 h-5" />
             <span>Treinos</span>
           </button>
           <button 
             onClick={() => setActiveTab("agenda")}
-            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'agenda' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-500 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'agenda' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
           >
             <CalendarDays className="w-5 h-5" />
             <span>Agenda</span>
           </button>
           <button 
+            onClick={() => setActiveTab("settings")}
+            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'settings' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
+          >
+            <Settings className="w-5 h-5" />
+            <span>Definições</span>
+          </button>
+          <button 
             onClick={onLogout}
-            className="flex items-center w-full gap-3 p-3 transition-all rounded-xl hover:bg-red-50 text-gray-500 hover:text-red-500 font-medium mt-8"
+            className="flex items-center w-full gap-3 p-3 transition-all rounded-xl hover:bg-red-50 text-gray-600 hover:text-red-500 font-medium mt-8"
           >
             <LogOut className="w-5 h-5" />
             <span>Sair</span>
@@ -159,12 +176,21 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
         )}
         <Routes>
           <Route path="/" element={
-            activeTab === 'students' ? (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                {activeTab === 'students' ? (
               <div className="max-w-5xl mx-auto space-y-8">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Gestão de Alunos</h2>
-                    <p className="text-gray-500 mt-1">Adicione e gira os planos de treino dos seus alunos.</p>
+                    <p className="text-gray-600 mt-1">Adicione e gira os planos de treino dos seus alunos.</p>
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <button 
@@ -193,7 +219,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                         <stat.icon className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{stat.label}</p>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{stat.label}</p>
                         <p className="text-2xl font-black text-gray-900">{stat.value}</p>
                       </div>
                     </div>
@@ -201,7 +227,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 </div>
 
                 <div className="relative">
-                  <Search className="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-4 top-1/2" />
+                  <Search className="absolute w-5 h-5 text-gray-500 -translate-y-1/2 left-4 top-1/2" />
                   <input
                     type="text"
                     placeholder="Procurar aluno..."
@@ -214,7 +240,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <div className="grid gap-4">
                   {filteredStudents.length === 0 ? (
                     <div className="p-12 text-center bg-white rounded-[24px] shadow-sm border border-gray-100">
-                      <p className="text-gray-500">Nenhum aluno encontrado.</p>
+                      <p className="text-gray-600">Nenhum aluno encontrado.</p>
                     </div>
                   ) : (
                     filteredStudents.map((student) => (
@@ -238,41 +264,41 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                                   navigator.clipboard.writeText(student.id);
                                   toast.success("UUID copiado para a área de transferência!");
                                 }}
-                                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gym-red transition-all"
+                                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gym-red transition-all"
                                 title={`Copiar UUID: ${student.id}`}
                               >
                                 <Fingerprint className="w-4 h-4" />
                               </button>
                             </div>
-                            <p className="text-sm text-gray-500 mt-0.5">{student.goal}</p>
+                            <p className="text-sm text-gray-600 mt-0.5">{student.goal}</p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-1">
                           <button 
                             onClick={(e) => { e.stopPropagation(); setSelectedStudentForProgress(student); }}
-                            className="p-2.5 transition-all rounded-xl hover:bg-blue-50 text-gray-400 hover:text-blue-500"
+                            className="p-2.5 transition-all rounded-xl hover:bg-blue-50 text-gray-500 hover:text-blue-500"
                             title="Ver Progresso"
                           >
                             <Activity className="w-5 h-5" />
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleShare(student.shareSlug); }}
-                            className="p-2.5 transition-all rounded-xl hover:bg-red-50 text-gray-400 hover:text-gym-red"
+                            className="p-2.5 transition-all rounded-xl hover:bg-red-50 text-gray-500 hover:text-gym-red"
                             title="Partilhar Link"
                           >
                             <Share2 className="w-5 h-5" />
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); navigate(`/admin/edit/${student.id}`); }}
-                            className="p-2.5 transition-all rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-900"
+                            className="p-2.5 transition-all rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-900"
                             title="Editar"
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleDelete(student.id); }}
-                            className="p-2.5 transition-all rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500"
+                            className="p-2.5 transition-all rounded-xl hover:bg-red-50 text-gray-500 hover:text-red-500"
                             title="Remover"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -289,7 +315,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <div className="space-y-4">
                   <button 
                     onClick={() => setSelectedWorkout(null)}
-                    className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-all font-medium"
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-all font-medium"
                   >
                     <ChevronRight className="w-5 h-5 rotate-180" />
                     Voltar para Lista de Treinos
@@ -314,15 +340,37 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <div className="max-w-5xl mx-auto space-y-8">
                   <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Todos os Treinos</h2>
-                    <p className="text-gray-500 mt-1">Gira os treinos de todos os alunos.</p>
+                    <p className="text-gray-600 mt-1">Gira os treinos de todos os alunos.</p>
                   </div>
+
+                  <div className="relative">
+                    <Search className="absolute w-5 h-5 text-gray-500 -translate-y-1/2 left-4 top-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Procurar treino ou exercício..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
+                      className="w-full py-4 pl-12 pr-4 text-gray-900 transition-all bg-white border rounded-2xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none shadow-sm"
+                    />
+                  </div>
+
                   <div className="grid gap-4">
-                    {students.flatMap(s => s.workouts.map(w => ({ ...w, studentName: s.name, studentId: s.id }))).length === 0 ? (
+                    {students.flatMap(s => s.workouts.map(w => ({ ...w, studentName: s.name, studentId: s.id })))
+                      .filter(w => 
+                        w.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        w.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        w.exercises.some(ex => ex.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                      ).length === 0 ? (
                       <div className="p-12 text-center bg-white rounded-[24px] shadow-sm border border-gray-100">
-                        <p className="text-gray-500">Nenhum treino encontrado.</p>
+                        <p className="text-gray-600">Nenhum treino encontrado.</p>
                       </div>
                     ) : (
-                      students.flatMap(s => s.workouts.map(w => ({ ...w, studentName: s.name, studentId: s.id }))).map((workout) => (
+                      students.flatMap(s => s.workouts.map(w => ({ ...w, studentName: s.name, studentId: s.id })))
+                        .filter(w => 
+                          w.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          w.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          w.exercises.some(ex => ex.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        ).map((workout) => (
                         <motion.div 
                           key={workout.id}
                           initial={{ opacity: 0, x: -10 }}
@@ -336,7 +384,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                             </div>
                             <div>
                               <h3 className="font-bold text-gray-900">{workout.name}</h3>
-                              <p className="text-sm text-gray-500 mt-0.5">Aluno: <span className="font-medium">{workout.studentName}</span></p>
+                              <p className="text-sm text-gray-600 mt-0.5">Aluno: <span className="font-medium">{workout.studentName}</span></p>
                             </div>
                           </div>
                           <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gym-red transition-colors" />
@@ -346,9 +394,85 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   </div>
                 </div>
               )
-            ) : (
+            ) : activeTab === 'agenda' ? (
               <CalendarView isAdmin={true} openForStudentId={location.state?.openCalendarForStudent} />
-            )
+            ) : (
+              <div className="max-w-2xl mx-auto space-y-8">
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900">Definições do Painel</h2>
+                  <p className="text-gray-600 mt-1">Personalize a aparência do perfil dos seus alunos.</p>
+                </div>
+
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-8">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-gym-red" />
+                      Logotipo Personalizado
+                    </h3>
+                    <p className="text-sm text-gray-500">Este logotipo aparecerá no topo da página individual de cada aluno.</p>
+                    
+                    <div className="flex items-center gap-6">
+                      <div className="w-24 h-24 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                        {adminSettings?.logoUrl ? (
+                          <img src={adminSettings.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-gray-300" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <label className="block">
+                          <span className="sr-only">Escolher logo</span>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setAdminSettings(prev => prev ? ({ ...prev, logoUrl: reader.result as string }) : ({ id: currentUser?.uid, logoUrl: reader.result as string }));
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-gym-red hover:file:bg-red-100 transition-all"
+                          />
+                        </label>
+                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Recomendado: PNG transparente, máx 500kb</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold text-gray-900">Nome do Instrutor</h3>
+                    <input 
+                      type="text"
+                      value={adminSettings?.instructorName || ""}
+                      onChange={(e) => setAdminSettings(prev => prev ? ({ ...prev, instructorName: (e.target as HTMLInputElement).value }) : ({ id: currentUser?.uid, instructorName: (e.target as HTMLInputElement).value }))}
+                      placeholder="Seu nome profissional"
+                      className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={async () => {
+                      if (adminSettings) {
+                        setIsSavingSettings(true);
+                        await storageService.saveAdminSettings(adminSettings);
+                        setIsSavingSettings(false);
+                        toast.success("Definições guardadas com sucesso!");
+                      }
+                    }}
+                    disabled={isSavingSettings}
+                    className="w-full py-4 bg-gym-red text-white font-bold rounded-2xl hover:bg-red-800 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+                  >
+                    {isSavingSettings ? "Guardando..." : "Guardar Alterações"}
+                  </button>
+                </div>
+              </div>
+            )}
+              </motion.div>
+            </AnimatePresence>
           } />
           <Route path="/new" element={<StudentForm />} />
           <Route path="/edit/:id" element={<StudentForm />} />
@@ -372,14 +496,14 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">{selectedStudentForProgress.name}</h3>
-                    <p className="text-xs text-gray-500 uppercase tracking-widest font-medium mt-0.5">Painel de Progresso</p>
+                    <p className="text-xs text-gray-600 uppercase tracking-widest font-medium mt-0.5">Painel de Progresso</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setSelectedStudentForProgress(null)}
                   className="p-2 hover:bg-gray-100 rounded-full transition-all"
                 >
-                  <X className="w-6 h-6 text-gray-400" />
+                  <X className="w-6 h-6 text-gray-500" />
                 </button>
               </div>
 
@@ -387,7 +511,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 {/* Metrics Summary */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Peso Inicial</p>
+                    <p className="text-[10px] font-black text-gray-500 uppercase mb-1">Peso Inicial</p>
                     <p className="text-xl font-bold text-gray-900">{selectedStudentForProgress.evaluations[0]?.weight}kg</p>
                   </div>
                   <div className="p-5 rounded-2xl bg-green-50 border border-green-100">
@@ -412,7 +536,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
                 {/* Workout Feedback */}
                 <div className="space-y-4">
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500 flex items-center gap-2">
+                  <h4 className="text-sm font-bold uppercase tracking-widest text-gray-600 flex items-center gap-2">
                     <Star className="w-4 h-4 text-gym-red" />
                     Feedback dos Treinos
                   </h4>
@@ -421,7 +545,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                       <div key={workout.id} className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                           <p className="font-bold text-gray-900">{workout.name}</p>
-                          <p className="text-[10px] text-gray-400 uppercase mt-1">Última Atualização: {workout.lastUpdated || 'N/A'}</p>
+                          <p className="text-[10px] text-gray-500 uppercase mt-1">Última Atualização: {workout.lastUpdated || 'N/A'}</p>
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="flex items-center gap-1">
@@ -433,7 +557,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                             ))}
                           </div>
                           {workout.feedback && (
-                            <div className="flex items-center gap-2 text-gray-500 max-w-[200px]">
+                            <div className="flex items-center gap-2 text-gray-600 max-w-[200px]">
                               <MessageSquare className="w-4 h-4 shrink-0" />
                               <p className="text-xs italic truncate">{workout.feedback}</p>
                             </div>

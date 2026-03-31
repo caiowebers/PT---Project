@@ -42,7 +42,6 @@ function SortableExerciseItem({
   updateExercise, 
   duplicateExercise, 
   removeExercise, 
-  setPreviewImage,
   categories,
   repPresets,
   restPresets,
@@ -118,13 +117,6 @@ function SortableExerciseItem({
 
         <div className="flex items-center gap-1">
           <button 
-            onClick={() => exercise.gifUrl && setPreviewImage(exercise.gifUrl)}
-            className={`p-2 rounded-xl transition-all ${exercise.gifUrl ? 'text-blue-500 hover:bg-blue-50' : 'text-gray-300 opacity-50'}`}
-            title="Ver Mídia"
-          >
-            <Eye className="w-5 h-5" />
-          </button>
-          <button 
             onClick={() => duplicateExercise(exercise)}
             className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
             title="Duplicar"
@@ -181,13 +173,6 @@ function SortableExerciseItem({
                   onClick={() => selectSuggestion(exercise.id, s)}
                   className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0 group/item transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                    {wgerService.getExerciseImage(s) ? (
-                      <img src={wgerService.getExerciseImage(s)} className="w-full h-full object-cover rounded-lg" alt="" referrerpolicy="no-referrer" />
-                    ) : (
-                      <ImageIcon className="w-4 h-4 text-gray-400" />
-                    )}
-                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-bold text-gray-900 truncate">{s.name}</div>
                     <div className="text-[9px] text-gray-500 uppercase font-bold">{s.category} • {s.primaryMuscles[0]}</div>
@@ -329,10 +314,12 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [selectedMuscle, setSelectedMuscle] = useState<Record<string, string>>({});
   const [muscles, setMuscles] = useState<string[]>([]);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [libraryMuscle, setLibraryMuscle] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  const [isFetchingMedia, setIsFetchingMedia] = useState(false);
+  
+  const [globalSearchTerm, setGlobalSearchTerm] = useState("");
+  const [globalSuggestions, setGlobalSuggestions] = useState<WgerExercise[]>([]);
+  const [globalLoading, setGlobalLoading] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -351,6 +338,23 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
       return () => clearTimeout(timer);
     }
   }, [highlightedId]);
+
+  const handleGlobalSearch = async (term: string) => {
+    setGlobalSearchTerm(term);
+    if (term.length < 2) {
+      setGlobalSuggestions([]);
+      return;
+    }
+    setGlobalLoading(true);
+    try {
+      const results = await wgerService.searchExercises(term);
+      setGlobalSuggestions(results);
+    } catch (error) {
+      setGlobalSuggestions([]);
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
 
   const handleWorkoutUpdate = (updatedWorkout: Workout) => {
     onUpdate({
@@ -381,15 +385,8 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     if (exerciseName) {
       // Set search term for the new item so it shows up
       setSearchTerms(prev => ({ ...prev, [newId]: exerciseName }));
-      // Trigger search to get image/description
+      // Trigger search to get description
       handleSearch(newId, exerciseName, undefined, true);
-      
-      // Also try to fetch media directly
-      wgerService.fetchExerciseMedia(exerciseName, "Principal").then(url => {
-        if (url) {
-          updateExercise(newId, { gifUrl: url });
-        }
-      });
     }
   };
 
@@ -441,64 +438,32 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     handleWorkoutUpdate({ ...workout, exercises: workout.exercises.filter(e => e.id !== id) });
   };
 
-  const fetchMissingMedia = async () => {
-    const exercisesToFetch = workout.exercises.filter(ex => !ex.gifUrl && ex.name.trim().length > 0);
-    if (exercisesToFetch.length === 0) return;
-
-    setIsFetchingMedia(true);
-    const toastId = toast.loading(`Buscando mídias para ${exercisesToFetch.length} exercícios...`);
-
+  const optimizeWorkout = async () => {
+    const toastId = toast.loading("Otimizando treino com IA...");
     try {
-      const updatedExercises = [...workout.exercises];
-      let successCount = 0;
-
-      for (const ex of exercisesToFetch) {
-        const mediaUrl = await wgerService.fetchExerciseMedia(ex.name, ex.category);
-        if (mediaUrl) {
-          const idx = updatedExercises.findIndex(e => e.id === ex.id);
-          if (idx !== -1) {
-            updatedExercises[idx] = { ...updatedExercises[idx], gifUrl: mediaUrl };
-            successCount++;
-          }
+      const optimizedExercises = await wgerService.optimizeWorkout(workout);
+      
+      // Ensure all exercises have at least one set
+      const validatedExercises = optimizedExercises.map(ex => {
+        if (!ex.sets || ex.sets.length === 0) {
+          return {
+            ...ex,
+            sets: [{ id: uuidv4(), reps: "12", load: "0" }],
+            reps: "1 set"
+          };
         }
-      }
+        return ex;
+      });
 
-      handleWorkoutUpdate({ ...workout, exercises: updatedExercises });
-      toast.success(`Mídias atualizadas!`, {
+      handleWorkoutUpdate({ ...workout, exercises: validatedExercises });
+      toast.success("Treino otimizado com sucesso!", {
         id: toastId,
-        description: `${successCount} novos GIFs/Imagens encontrados.`
+        description: "Sequência otimizada por IA e séries validadas."
       });
     } catch (error) {
-      console.error("Error fetching missing media:", error);
-      toast.error("Erro ao buscar mídias.", { id: toastId });
-    } finally {
-      setIsFetchingMedia(false);
+      console.error("Optimization error:", error);
+      toast.error("Erro ao otimizar treino.", { id: toastId });
     }
-  };
-
-  const optimizeWorkout = () => {
-    const categoryOrder = ["Ativação", "Aquecimento", "Principal", "Abdominais", "Alongamentos"];
-    
-    const optimizedExercises = [...workout.exercises].sort((a, b) => {
-      const indexA = categoryOrder.indexOf(a.category);
-      const indexB = categoryOrder.indexOf(b.category);
-      return indexA - indexB;
-    }).map(ex => {
-      // Ensure it has at least one set if it's empty
-      if (!ex.sets || ex.sets.length === 0) {
-        return {
-          ...ex,
-          sets: [{ id: uuidv4(), reps: "12", load: "0" }],
-          reps: "1 set"
-        };
-      }
-      return ex;
-    });
-
-    handleWorkoutUpdate({ ...workout, exercises: optimizedExercises });
-    toast.success("Treino otimizado com sucesso!", {
-      description: "Exercícios ordenados por categoria e séries validadas."
-    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -545,10 +510,8 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
   };
 
   const selectSuggestion = (id: string, suggestion: WgerExercise) => {
-    const imageUrl = wgerService.getExerciseImage(suggestion);
     updateExercise(id, { 
       name: suggestion.name, 
-      gifUrl: imageUrl || "",
       description: suggestion.description
     });
     setSuggestions(prev => ({ ...prev, [id]: [] }));
@@ -594,14 +557,51 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
               <input 
                 type="text" 
                 placeholder="Pesquisar na biblioteca de exercícios..."
+                value={globalSearchTerm}
+                onChange={e => handleGlobalSearch((e.target as HTMLInputElement).value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-red-500/20 focus:border-gym-red font-bold text-xs text-gray-900 transition-all placeholder:text-gray-500"
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
-                    addExercise(e.currentTarget.value);
-                    e.currentTarget.value = "";
+                    addExercise(globalSearchTerm);
+                    setGlobalSearchTerm("");
+                    setGlobalSuggestions([]);
                   }
                 }}
               />
+              {globalLoading && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-4 h-4 text-gym-red animate-spin" />
+                </div>
+              )}
+              
+              <AnimatePresence>
+                {globalSuggestions.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 max-h-64 overflow-y-auto overflow-x-hidden no-scrollbar"
+                  >
+                    {globalSuggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          addExercise(suggestion.name);
+                          setGlobalSearchTerm("");
+                          setGlobalSuggestions([]);
+                        }}
+                        className="w-full p-4 text-left hover:bg-gray-50 flex items-center justify-between group transition-all"
+                      >
+                        <div>
+                          <p className="text-xs font-bold text-gray-900 group-hover:text-gym-red transition-colors">{suggestion.name}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{suggestion.description}</p>
+                        </div>
+                        <Plus className="w-4 h-4 text-gray-300 group-hover:text-gym-red" />
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             
             <div className="flex gap-1 overflow-x-auto no-scrollbar w-full md:w-auto">
@@ -662,7 +662,6 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                   updateExercise={updateExercise}
                   duplicateExercise={duplicateExercise}
                   removeExercise={removeExercise}
-                  setPreviewImage={setPreviewImage}
                   categories={categories}
                   repPresets={repPresets}
                   restPresets={restPresets}
@@ -745,67 +744,11 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                 <Zap className="w-4 h-4" />
                 Otimizar Treino
               </button>
-
-              <button 
-                onClick={fetchMissingMedia}
-                disabled={isFetchingMedia || workout.exercises.every(ex => ex.gifUrl)}
-                className="w-full py-4 bg-white text-gray-700 border border-gray-200 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 mt-2 shadow-sm"
-              >
-                {isFetchingMedia ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <ImageIcon className="w-3 h-3" />
-                )}
-                Buscar Mídias Ausentes
-              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Image Preview Modal */}
-      <AnimatePresence>
-        {previewImage && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-            onClick={() => setPreviewImage(null)}
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-2xl w-full aspect-square bg-white border border-gray-100 rounded-[32px] overflow-hidden shadow-2xl flex items-center justify-center"
-              onClick={e => e.stopPropagation()}
-            >
-              <img 
-                src={previewImage} 
-                className="w-full h-full object-contain" 
-                alt="Preview" 
-                referrerpolicy="no-referrer"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  const parent = (e.target as HTMLImageElement).parentElement;
-                  if (parent) {
-                    const msg = document.createElement('div');
-                    msg.className = 'text-gray-500 text-xs font-bold text-center p-8';
-                    msg.innerText = 'Imagem não disponível. Verifique as instruções no card do exercício.';
-                    parent.appendChild(msg);
-                  }
-                }}
-              />
-              <button 
-                onClick={() => setPreviewImage(null)}
-                className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-red-500 text-white rounded-full transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      </div>
   );
 }

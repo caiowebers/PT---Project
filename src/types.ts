@@ -42,6 +42,7 @@ export interface Exercise {
   sets?: ExerciseSet[];
   loadUnit?: "Kg" | "Libras" | "Pesos" | "%";
   repType?: "Repetições" | "Minutos" | "Segundos";
+  aiDescription?: string;
 }
 
 export interface Workout {
@@ -61,7 +62,7 @@ export interface ClassSession {
   workoutTitle: string;
   start: string; // ISO string
   end: string;   // ISO string
-  status: 'scheduled' | 'completed' | 'cancelled';
+  status: 'pending' | 'scheduled' | 'completed' | 'cancelled';
   notes?: string;
   googleEventId?: string;
 }
@@ -71,6 +72,7 @@ export interface Student {
   adminId: string; // This is the UID of the Personal Trainer (Admin)
   shareSlug: string;
   name: string;
+  email?: string;
   age: number;
   goal: string;
   startDate: string;
@@ -79,4 +81,13 @@ export interface Student {
   measurements: BodyMeasurements[];
   workouts: Workout[];
   sessions?: ClassSession[];
+  photoUrl?: string;
+  personalFeedback?: string;
+  healthInsights?: string;
+}
+
+export interface AdminSettings {
+  id: string;
+  logoUrl?: string;
+  instructorName?: string;
 }

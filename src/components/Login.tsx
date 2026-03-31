@@ -114,7 +114,7 @@ export default function Login({ onLogin }: LoginProps) {
           <h3 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">
             BEM-VINDO DE VOLTA
           </h3>
-          <p className="text-gray-500 font-medium mb-8">
+          <p className="text-gray-600 font-medium mb-8">
             Aceda ao seu painel de controlo administrativo.
           </p>
 

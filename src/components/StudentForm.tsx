@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Plus, Trash2, Dumbbell, Activity, Ruler } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Dumbbell, Activity, Ruler, Camera, Brain, Sparkles, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import { Student, Workout, Exercise, PhysicalEvaluation, BodyMeasurements, ClassSession } from "../types";
 import WorkoutEditor from "./WorkoutEditor";
 import { storageService } from "../services/storageService";
+import { wgerService } from "../services/wgerService";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -60,6 +61,7 @@ export default function StudentForm() {
 
   const [activeTab, setActiveTab] = useState<"profile" | "physical" | "workouts" | "timeline">("profile");
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -82,6 +84,40 @@ export default function StudentForm() {
       }
     } else {
       navigate("/admin");
+    }
+  };
+
+  const handleGenerateInsights = async () => {
+    if (!student.name) {
+      toast.error("Por favor, insira o nome do aluno primeiro.");
+      return;
+    }
+    setIsGeneratingInsights(true);
+    try {
+      const insights = await wgerService.generateHealthInsights(student);
+      setStudent(prev => ({ ...prev, healthInsights: insights }));
+      setHasUnsavedChanges(true);
+      toast.success("Insights de saúde gerados com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao gerar insights.");
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit for base64 storage
+        toast.error("A imagem é muito grande. Por favor, escolha uma imagem menor que 1MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setStudent(prev => ({ ...prev, photoUrl: reader.result as string }));
+        setHasUnsavedChanges(true);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -152,7 +188,7 @@ export default function StudentForm() {
       <div className="flex items-center justify-between">
         <button 
           onClick={handleBack}
-          className="flex items-center gap-2 text-gray-500 transition-all hover:text-gray-900"
+          className="flex items-center gap-2 text-gray-600 transition-all hover:text-gray-900"
         >
           <ArrowLeft className="w-5 h-5" />
           Voltar
@@ -179,7 +215,7 @@ export default function StudentForm() {
             className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all whitespace-nowrap ${
               activeTab === tab 
                 ? "bg-red-50 text-gym-red" 
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
             }`}
           >
             {tab === "profile" && "Perfil"}
@@ -198,8 +234,25 @@ export default function StudentForm() {
       >
         {activeTab === "profile" && (
           <div className="grid gap-6 md:grid-cols-2">
+            <div className="md:col-span-2 flex flex-col items-center mb-4">
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-red-50 bg-gray-100 flex items-center justify-center shadow-lg">
+                  {student.photoUrl ? (
+                    <img src={student.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-10 h-10 text-gray-300" />
+                  )}
+                </div>
+                <label className="absolute bottom-0 right-0 p-2 bg-gym-red text-white rounded-full cursor-pointer shadow-md hover:bg-red-800 transition-all">
+                  <Camera className="w-4 h-4" />
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 font-medium">Clique na câmara para alterar a foto</p>
+            </div>
+
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-500">Nome Completo</label>
+              <label className="text-sm font-medium text-gray-600">Nome Completo</label>
               <input 
                 type="text" 
                 value={student.name}
@@ -211,7 +264,20 @@ export default function StudentForm() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-500">Idade</label>
+              <label className="text-sm font-medium text-gray-600">Email (Para convites de agenda)</label>
+              <input 
+                type="email" 
+                value={student.email || ""}
+                onChange={e => {
+                  setStudent(prev => ({ ...prev, email: (e.target as HTMLInputElement).value }));
+                  setHasUnsavedChanges(true);
+                }}
+                placeholder="exemplo@email.com"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">Idade</label>
               <input 
                 type="number" 
                 value={student.age}
@@ -223,7 +289,7 @@ export default function StudentForm() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-500">Objetivo</label>
+              <label className="text-sm font-medium text-gray-600">Objetivo</label>
               <input 
                 type="text" 
                 value={student.goal}
@@ -236,7 +302,7 @@ export default function StudentForm() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-500">Data de Início</label>
+              <label className="text-sm font-medium text-gray-600">Data de Início</label>
               <input 
                 type="date" 
                 value={student.startDate}
@@ -248,7 +314,48 @@ export default function StudentForm() {
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <label className="text-sm font-medium text-gray-500">Notas e Recomendações</label>
+              <label className="text-sm font-medium text-gray-600">Feedback do Personal (Aparece no perfil do aluno)</label>
+              <textarea 
+                rows={3}
+                value={student.personalFeedback || ""}
+                onChange={e => {
+                  setStudent(prev => ({ ...prev, personalFeedback: (e.target as HTMLTextAreaElement).value }));
+                  setHasUnsavedChanges(true);
+                }}
+                placeholder="Ex: Ótima evolução este mês! Foca na execução do agachamento..."
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+              />
+            </div>
+
+            <div className="md:col-span-2 space-y-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-gym-red">
+                  <Brain className="w-5 h-5" />
+                  <h3 className="font-bold uppercase tracking-wider">Insights de Saúde (IA)</h3>
+                </div>
+                <button 
+                  onClick={handleGenerateInsights}
+                  disabled={isGeneratingInsights}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold transition-all rounded-lg bg-red-50 text-gym-red hover:bg-red-100 disabled:opacity-50"
+                >
+                  {isGeneratingInsights ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {isGeneratingInsights ? "Gerando..." : "Gerar com IA"}
+                </button>
+              </div>
+              
+              {student.healthInsights ? (
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {student.healthInsights}
+                </div>
+              ) : (
+                <div className="p-8 text-center border-2 border-dashed border-gray-100 rounded-2xl">
+                  <p className="text-xs text-gray-500">Clique em "Gerar com IA" para obter um resumo de saúde baseado nos dados do aluno.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-sm font-medium text-gray-600">Notas e Recomendações</label>
               <textarea 
                 rows={4}
                 value={student.notes}
@@ -281,7 +388,7 @@ export default function StudentForm() {
                 { label: "Massa Gorda (kg)", key: "fatMass" }
               ].map(field => (
                 <div key={field.key} className="space-y-1">
-                  <label className="text-xs text-gray-500">{field.label}</label>
+                  <label className="text-xs text-gray-600">{field.label}</label>
                   <input 
                     type="number" 
                     step="0.01"
@@ -315,7 +422,7 @@ export default function StudentForm() {
                 { label: "Panturrilha E", key: "calfL" }
               ].map(field => (
                 <div key={field.key} className="space-y-1">
-                  <label className="text-xs text-gray-500">{field.label}</label>
+                  <label className="text-xs text-gray-600">{field.label}</label>
                   <input 
                     type="number" 
                     step="0.1"
@@ -352,7 +459,7 @@ export default function StudentForm() {
             {student.workouts?.length === 0 ? (
               <div className="p-12 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
                 <Dumbbell className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-500">Nenhum treino criado ainda.</p>
+                <p className="text-gray-600">Nenhum treino criado ainda.</p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -417,7 +524,7 @@ export default function StudentForm() {
             
             {sessions.length === 0 ? (
               <div className="p-12 text-center border rounded-2xl bg-gray-50 border-gray-200">
-                <p className="text-gray-500">Nenhuma aula agendada ou concluída.</p>
+                <p className="text-gray-600">Nenhuma aula agendada ou concluída.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -438,18 +545,18 @@ export default function StudentForm() {
                           <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
                             isCompleted ? 'bg-green-100 text-green-700' : 
                             isCancelled ? 'bg-red-100 text-red-700' : 
-                            isPast ? 'bg-gray-200 text-gray-500' : 
+                            isPast ? 'bg-gray-200 text-gray-600' : 
                             'bg-blue-50 text-blue-600'
                           }`}>
                             {isCompleted ? 'Concluída' : isCancelled ? 'Cancelada' : isPast ? 'Passada' : 'Agendada'}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-600">
                             {format(parseISO(session.start), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                           </span>
                         </div>
                         <h4 className="font-bold text-lg text-gray-900">{session.workoutTitle}</h4>
                         {session.notes && (
-                          <p className="text-sm text-gray-500 mt-1">{session.notes}</p>
+                          <p className="text-sm text-gray-600 mt-1">{session.notes}</p>
                         )}
                       </div>
                     </div>

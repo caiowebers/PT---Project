@@ -1,4 +1,4 @@
-import { Student, PhysicalEvaluation, BodyMeasurements, Workout, Exercise, ClassSession } from "../types";
+import { Student, PhysicalEvaluation, BodyMeasurements, Workout, Exercise, ClassSession, AdminSettings } from "../types";
 import { db, handleFirestoreError, OperationType, auth, onAuthStateChanged } from "../firebase";
 import { v4 as uuidv4 } from "uuid";
 import { 
@@ -17,6 +17,7 @@ import {
 
 const COLLECTION = "students";
 const SESSIONS_COLLECTION = "aulas";
+const SETTINGS_COLLECTION = "settings";
 
 // Test connection to Firestore
 async function testConnection() {
@@ -206,21 +207,30 @@ export const storageService = {
     }
   },
 
-  salvarAula: async (studentId: string, start: any, end: any, studentName: string, workoutTitle: string, notes?: string, googleEventId?: string) => {
+  salvarAula: async (studentId: string, start: any, end: any, studentName: string, workoutTitle: string, notes?: string, googleEventId?: string, status: 'pending' | 'scheduled' = 'scheduled') => {
     try {
       const user = auth.currentUser;
-      if (!user) throw new Error("Usuário não autenticado");
+      // If no user, it's a student requesting via shareSlug
+      // We need to find the adminId for this student
+      let adminId = user?.uid;
+      
+      if (!adminId) {
+        const student = await storageService.getStudentById(studentId);
+        adminId = student?.adminId;
+      }
+
+      if (!adminId) throw new Error("Admin ID não encontrado");
 
       const id = uuidv4();
-      const aula = {
+      const aula: ClassSession = {
         id,
         studentId,
         studentName,
-        instructorId: user.uid,
+        instructorId: adminId,
         workoutTitle,
         start: start.toISOString ? start.toISOString() : String(start),
         end: end.toISOString ? end.toISOString() : String(end),
-        status: "scheduled",
+        status: status,
         notes: notes || "",
         googleEventId: googleEventId || ""
       };
@@ -268,6 +278,17 @@ export const storageService = {
     };
   },
 
+  subscribeToStudentSessions: (studentId: string, callback: (sessions: ClassSession[]) => void) => {
+    const q = query(collection(db, SESSIONS_COLLECTION), where("studentId", "==", studentId));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const sessions = snapshot.docs.map(doc => doc.data() as ClassSession);
+      callback(sessions);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, SESSIONS_COLLECTION);
+    });
+    return unsubscribe;
+  },
+
   subscribeToStudents: (callback: (students: Student[]) => void) => {
     let unsubscribeSnapshot: (() => void) | null = null;
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -294,5 +315,26 @@ export const storageService = {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
+  },
+
+  // Admin Settings
+  getAdminSettings: async (adminId: string): Promise<AdminSettings | undefined> => {
+    try {
+      const docRef = doc(db, SETTINGS_COLLECTION, adminId);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? (docSnap.data() as AdminSettings) : undefined;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `${SETTINGS_COLLECTION}/${adminId}`);
+      return undefined;
+    }
+  },
+
+  saveAdminSettings: async (settings: AdminSettings) => {
+    try {
+      const docRef = doc(db, SETTINGS_COLLECTION, settings.id);
+      await setDoc(docRef, settings);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${SETTINGS_COLLECTION}/${settings.id}`);
+    }
   }
 };

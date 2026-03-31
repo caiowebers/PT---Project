@@ -36,6 +36,17 @@
         "googleEventId": { "type": "string" }
       },
       "required": ["id", "studentId", "instructorId", "start", "end", "status"]
+    },
+    "AdminSettings": {
+      "title": "AdminSettings",
+      "description": "Custom settings for a Personal Trainer, such as logo and name.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "UID of the Personal Trainer." },
+        "logoUrl": { "type": "string" },
+        "instructorName": { "type": "string" }
+      },
+      "required": ["id"]
     }
   },
   "firestore": {
@@ -46,6 +57,10 @@
     "/aulas/{aulaId}": {
       "schema": "ClassSession",
       "description": "Collection of class sessions managed by Personal Trainers."
+    },
+    "/settings/{adminId}": {
+      "schema": "AdminSettings",
+      "description": "Custom settings for Personal Trainers."
     }
   }
 }

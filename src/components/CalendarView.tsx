@@ -37,7 +37,7 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
     workoutTitle: "",
     start: "",
     end: "",
-    status: "scheduled" as const,
+    status: "scheduled" as any,
     notes: ""
   });
 
@@ -60,25 +60,38 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
   }, [openForStudentId, isAdmin]);
 
   useEffect(() => {
-    const unsubSessions = storageService.subscribeToSessions((data) => {
-      if (studentId) {
-        setSessions(data.filter(s => s.studentId === studentId));
-      } else {
-        setSessions(data);
-      }
-    });
+    let unsubSessions: (() => void) | null = null;
 
     if (isAdmin) {
+      unsubSessions = storageService.subscribeToSessions((data) => {
+        if (studentId) {
+          setSessions(data.filter(s => s.studentId === studentId));
+        } else {
+          setSessions(data);
+        }
+      });
+
       const unsubStudents = storageService.subscribeToStudents((data) => {
         setStudents(data);
       });
+      
       return () => {
-        unsubSessions();
+        if (unsubSessions) unsubSessions();
         unsubStudents();
+      };
+    } else if (studentId) {
+      // For students viewing their own page (not authenticated as admin)
+      unsubSessions = storageService.subscribeToStudentSessions(studentId, (data) => {
+        setSessions(data);
+      });
+      return () => {
+        if (unsubSessions) unsubSessions();
       };
     }
 
-    return () => unsubSessions();
+    return () => {
+      if (unsubSessions) unsubSessions();
+    };
   }, [studentId, isAdmin]);
 
   const handleDateClick = (arg: any) => {
@@ -146,7 +159,7 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
         if (selectedEvent?.googleEventId) {
           await googleCalendarService.updateEvent(selectedEvent.googleEventId, newSession, student.name);
         } else {
-          const eventId = await googleCalendarService.createEvent(newSession, student.name);
+          const eventId = await googleCalendarService.createEvent(newSession, student.name, student.email);
           if (eventId) {
             newSession.googleEventId = eventId;
           }
@@ -212,7 +225,7 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
     title: `${s.workoutTitle} (${s.studentName})`,
     start: s.start,
     end: s.end,
-    backgroundColor: s.status === 'completed' ? '#10b981' : s.status === 'cancelled' ? '#ef4444' : (isAdmin ? "#00FF00" : "#FF5F1F"),
+    backgroundColor: s.status === 'completed' ? '#10b981' : s.status === 'cancelled' ? '#ef4444' : s.status === 'pending' ? '#f59e0b' : (isAdmin ? "#00FF00" : "#FF5F1F"),
     borderColor: "transparent",
     textColor: "#000"
   }));
@@ -384,6 +397,7 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
                       className="w-full bg-black/40 border border-gym-border rounded-xl py-3 px-4 text-sm outline-none focus:border-neon-green appearance-none"
                       disabled={!isAdmin}
                     >
+                      <option value="pending">Pendente (Solicitação)</option>
                       <option value="scheduled">Agendado</option>
                       <option value="completed">Concluído</option>
                       <option value="cancelled">Cancelado</option>

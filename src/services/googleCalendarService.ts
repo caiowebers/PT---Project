@@ -6,11 +6,11 @@ const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3/calendars/prim
 export const googleCalendarService = {
   getAccessToken: () => localStorage.getItem("google_calendar_access_token"),
 
-  async createEvent(session: ClassSession, studentName: string): Promise<string | null> {
+  async createEvent(session: ClassSession, studentName: string, studentEmail?: string): Promise<string | null> {
     const token = this.getAccessToken();
     if (!token) return null;
 
-    const event = {
+    const event: any = {
       summary: `Treino: ${studentName}`,
       description: `Treino de ${session.workoutTitle}\nNotas: ${session.notes || "Nenhuma"}`,
       start: {
@@ -23,6 +23,11 @@ export const googleCalendarService = {
       },
       colorId: "10", // Green color
     };
+
+    if (studentEmail) {
+      event.attendees = [{ email: studentEmail }];
+      event.sendUpdates = "all"; // Send invitation email
+    }
 
     try {
       const response = await fetch(CALENDAR_API_BASE, {

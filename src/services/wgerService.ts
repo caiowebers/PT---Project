@@ -135,5 +135,90 @@ export const wgerService = {
 
   getExerciseImage: (exercise: WgerExercise): string | undefined => {
     return exercise.gifUrl || (exercise.images && exercise.images[0]);
+  },
+
+  optimizeWorkout: async (workout: any): Promise<any[]> => {
+    try {
+      console.log(`Optimizing workout sequence for: ${workout.name}`);
+      const prompt = `Optimize the sequence of the following gym exercises for a workout named "${workout.name}". 
+      The goal is to provide the most efficient and safe sequence (e.g., starting with compound movements, then isolation, then core/stretching).
+      Exercises: ${workout.exercises.map((ex: any) => `${ex.name} (${ex.category})`).join(", ")}.
+      
+      Return the optimized sequence as a JSON array of exercise names in the correct order.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          }
+        }
+      });
+
+      const optimizedNames = JSON.parse(response.text || "[]");
+      
+      // Reorder based on AI response
+      const optimizedExercises = [...workout.exercises].sort((a, b) => {
+        const indexA = optimizedNames.indexOf(a.name);
+        const indexB = optimizedNames.indexOf(b.name);
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      });
+
+      return optimizedExercises;
+    } catch (error) {
+      console.error("Optimize Workout Error:", error);
+      return workout.exercises;
+    }
+  },
+
+  generateExerciseDescription: async (exerciseName: string): Promise<string> => {
+    try {
+      console.log(`Generating AI description for: ${exerciseName}`);
+      const prompt = `Provide a very brief (max 2 sentences) and clear instruction on how to perform the gym exercise "${exerciseName}" in Portuguese. Focus on form and safety.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt
+      });
+
+      return response.text || "Descrição não disponível.";
+    } catch (error) {
+      console.error("Generate Description Error:", error);
+      return "Erro ao gerar descrição.";
+    }
+  },
+
+  generateHealthInsights: async (studentData: any): Promise<string> => {
+    try {
+      console.log(`Generating health insights for: ${studentData.name}`);
+      const prompt = `Com base nos dados do aluno abaixo, gere um resumo conciso (máximo 4 parágrafos curtos) com dicas de saúde, alertas e sugestões de treino/nutrição em Português.
+      Dados:
+      Nome: ${studentData.name}
+      Idade: ${studentData.age}
+      Objetivo: ${studentData.goal}
+      Peso: ${studentData.evaluations?.[studentData.evaluations.length - 1]?.weight}kg
+      Altura: ${studentData.evaluations?.[studentData.evaluations.length - 1]?.height}m
+      IMC: ${studentData.evaluations?.[studentData.evaluations.length - 1]?.bmi}
+      % Gordura: ${studentData.evaluations?.[studentData.evaluations.length - 1]?.bodyFat}%
+      Notas: ${studentData.notes}
+      
+      Seja motivador e profissional. Use bullet points para as dicas principais.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt
+      });
+
+      return response.text || "Insights não disponíveis no momento.";
+    } catch (error) {
+      console.error("Generate Health Insights Error:", error);
+      return "Erro ao gerar insights de saúde.";
+    }
   }
 };
