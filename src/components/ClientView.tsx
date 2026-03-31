@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { 
+  History,
+  CheckCircle2,
   Check,
   X,
   ChevronLeft,
@@ -20,8 +22,9 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
-import { Student, ClassSession, Exercise, AdminSettings } from "../types";
+import { Student, ClassSession, Exercise, AdminSettings, CompletedWorkout, Workout } from "../types";
 import { storageService } from "../services/storageService";
+import { v4 as uuidv4 } from "uuid";
 import { wgerService } from "../services/wgerService";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay, addHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -43,10 +46,14 @@ export default function ClientView() {
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"saude" | "treino" | "agenda">("agenda");
+  const [activeTab, setActiveTab] = useState<"saude" | "treino" | "agenda" | "historico">("agenda");
   const [aiDescriptions, setAiDescriptions] = useState<Record<string, string>>({});
   const [generatingDesc, setGeneratingDesc] = useState<Record<string, boolean>>({});
+  const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
+  const [workoutFeedback, setWorkoutFeedback] = useState("");
+  const [isFinishing, setIsFinishing] = useState<string | null>(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [requestData, setRequestData] = useState({
     date: format(new Date(), "yyyy-MM-dd"),
     time: "09:00",
@@ -98,10 +105,83 @@ export default function ClientView() {
     try {
       const desc = await wgerService.generateExerciseDescription(exercise.name);
       setAiDescriptions(prev => ({ ...prev, [exercise.id]: desc }));
+      
+      if (student && student.workouts) {
+        const updatedWorkouts = student.workouts.map(w => ({
+          ...w,
+          exercises: w.exercises.map(e => e.id === exercise.id ? { ...e, description: desc } : e)
+        }));
+        setStudent(prev => prev ? ({ ...prev, workouts: updatedWorkouts }) : null);
+        await storageService.updateStudentWorkouts(student.id, updatedWorkouts);
+      }
     } catch (error) {
       console.error("Error generating description:", error);
     } finally {
       setGeneratingDesc(prev => ({ ...prev, [exercise.id]: false }));
+    }
+  };
+
+  const handleGenerateInsights = async () => {
+    if (!student) return;
+    setIsGeneratingInsights(true);
+    try {
+      const insights = await wgerService.generateHealthInsights(student);
+      setStudent(prev => prev ? ({ ...prev, healthInsights: insights }) : null);
+      await storageService.updateStudentHealthInsights(student.id, insights);
+      toast.success("Insights de saúde gerados com sucesso!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao gerar insights.");
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
+
+  const toggleExercise = (exerciseId: string) => {
+    setCompletedExercises(prev => ({
+      ...prev,
+      [exerciseId]: !prev[exerciseId]
+    }));
+  };
+
+  const finishWorkout = async (workout: Workout) => {
+    if (!student) return;
+    
+    const completedIds = Object.entries(completedExercises)
+      .filter(([id, completed]) => {
+        return completed && workout.exercises.some(e => e.id === id);
+      })
+      .map(([id]) => id);
+
+    if (completedIds.length === 0) {
+      toast.error("Marque pelo menos um exercício como concluído!");
+      return;
+    }
+
+    setIsFinishing(workout.id);
+    try {
+      const newCompletedWorkout: CompletedWorkout = {
+        id: uuidv4(),
+        workoutId: workout.id,
+        workoutName: workout.name,
+        date: new Date().toISOString(),
+        feedback: workoutFeedback,
+        rating: 5,
+        exercisesCompleted: completedIds
+      };
+
+      const updatedHistory = [newCompletedWorkout, ...(student.workoutHistory || [])];
+      setStudent({ ...student, workoutHistory: updatedHistory });
+      await storageService.updateStudentWorkoutHistory(student.id, updatedHistory);
+      
+      setCompletedExercises({});
+      setWorkoutFeedback("");
+      setIsFinishing(null);
+      toast.success("Treino concluído! Bom trabalho!");
+      setActiveTab("historico");
+    } catch (error) {
+      console.error("Error finishing workout:", error);
+      setIsFinishing(null);
     }
   };
 
@@ -256,19 +336,42 @@ export default function ClientView() {
               )}
 
               {/* AI Insights Section */}
-              {student.healthInsights && (
-                <div className="bg-red-50 rounded-[32px] p-6 border border-red-100 space-y-4">
+              <div className="bg-red-50 rounded-[32px] p-6 border border-red-100 space-y-4">
+                <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold uppercase tracking-widest text-gym-red flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
                     Insights de Saúde (IA)
                   </h3>
+                  <button
+                    onClick={handleGenerateInsights}
+                    disabled={isGeneratingInsights}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-white text-gym-red rounded-full text-[10px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                  >
+                    {isGeneratingInsights ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3" />
+                        {student.healthInsights ? "Atualizar IA" : "Gerar com IA"}
+                      </>
+                    )}
+                  </button>
+                </div>
+                {student.healthInsights ? (
                   <div className="text-sm text-red-900 leading-relaxed space-y-2">
                     {student.healthInsights.split('\n').map((line, i) => (
                       <p key={i}>{line}</p>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-red-400 italic">
+                    Clique no botão acima para gerar insights de saúde baseados nos seus dados.
+                  </p>
+                )}
+              </div>
 
               {/* Charts Section */}
               <div className="space-y-6">
@@ -369,11 +472,14 @@ export default function ClientView() {
                       {workout.exercises.map((exercise, index) => (
                         <div key={exercise.id} className="p-4 rounded-2xl bg-gray-50 space-y-3">
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center font-bold text-gray-400 flex-shrink-0 text-sm">
-                              {index + 1}
-                            </div>
+                            <button 
+                              onClick={() => toggleExercise(exercise.id)}
+                              className={`w-10 h-10 rounded-xl shadow-sm flex items-center justify-center font-bold flex-shrink-0 transition-all ${completedExercises[exercise.id] ? 'bg-green-500 text-white' : 'bg-white text-gray-400'}`}
+                            >
+                              {completedExercises[exercise.id] ? <Check className="w-5 h-5" /> : index + 1}
+                            </button>
                             <div className="flex-1 min-w-0">
-                              <div className="font-bold text-gray-800 text-sm truncate">{exercise.name}</div>
+                              <div className={`font-bold text-sm truncate ${completedExercises[exercise.id] ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{exercise.name}</div>
                               <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{exercise.reps} • {exercise.rest}</div>
                             </div>
                             <a 
@@ -392,7 +498,7 @@ export default function ClientView() {
                               <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
                                 <Info className="w-3 h-3" /> Instruções IA
                               </span>
-                              {!aiDescriptions[exercise.id] && !generatingDesc[exercise.id] && (
+                              {!aiDescriptions[exercise.id] && !generatingDesc[exercise.id] && !exercise.description && (
                                 <button 
                                   onClick={() => generateDescription(exercise)}
                                   className="text-[9px] font-bold text-gym-red hover:underline"
@@ -407,9 +513,9 @@ export default function ClientView() {
                                 <Loader2 className="w-3 h-3 animate-spin" />
                                 Gerando instruções personalizadas...
                               </div>
-                            ) : aiDescriptions[exercise.id] ? (
+                            ) : (aiDescriptions[exercise.id] || exercise.description) ? (
                               <p className="text-[11px] text-gray-600 leading-relaxed italic">
-                                "{aiDescriptions[exercise.id]}"
+                                "{aiDescriptions[exercise.id] || exercise.description}"
                               </p>
                             ) : (
                               <p className="text-[10px] text-gray-400 italic">
@@ -420,10 +526,94 @@ export default function ClientView() {
                         </div>
                       ))}
                     </div>
+
+                    <div className="mt-8 pt-6 border-t border-gray-100">
+                      <div className="mb-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Feedback do Treino</label>
+                        <textarea 
+                          value={workoutFeedback}
+                          onChange={(e) => setWorkoutFeedback(e.target.value)}
+                          placeholder="Como foi o treino hoje? Alguma dor ou dificuldade?"
+                          className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-gym-red/20 transition-all min-h-[80px]"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => finishWorkout(workout)}
+                        disabled={isFinishing === workout.id}
+                        className="w-full bg-gym-red text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 hover:bg-red-800 transition-all disabled:opacity-50"
+                      >
+                        {isFinishing === workout.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-5 h-5" />
+                            Concluir Treino
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )) : (
                   <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-center text-gym-muted">
                     Nenhum treino cadastrado.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === "historico" && (
+            <motion.div 
+              key="historico"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-lg font-bold text-gray-800">Histórico de Treinos</h2>
+              </div>
+
+              <div className="space-y-4">
+                {student.workoutHistory && student.workoutHistory.length > 0 ? (
+                  student.workoutHistory.map((session) => (
+                    <div key={session.id} className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="font-bold text-gray-900">{session.workoutName}</h3>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                            {format(parseISO(session.date), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                        <div className="bg-green-50 text-green-600 p-2 rounded-full">
+                          <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                      </div>
+                      
+                      {session.feedback && (
+                        <div className="bg-gray-50 rounded-2xl p-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Seu Feedback</p>
+                          <p className="text-xs text-gray-600 italic">"{session.feedback}"</p>
+                        </div>
+                      )}
+                      
+                      <div className="mt-4 flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          {session.exercisesCompleted.length} exercícios concluídos
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-white rounded-[32px] p-12 shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-center">
+                    <History className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium">Você ainda não concluiu nenhum treino.</p>
+                    <button 
+                      onClick={() => setActiveTab("treino")}
+                      className="mt-4 text-gym-red font-bold text-sm hover:underline"
+                    >
+                      Começar agora
+                    </button>
                   </div>
                 )}
               </div>
@@ -653,6 +843,13 @@ export default function ClientView() {
         >
           <Dumbbell className="w-4 h-4" />
           <span className={`${activeTab === "treino" ? "block" : "hidden sm:block"}`}>Treino</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab("historico")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "historico" ? "bg-red-50 text-gym-red" : "text-gray-600 hover:bg-gray-50"}`}
+        >
+          <History className="w-4 h-4" />
+          <span className={`${activeTab === "historico" ? "block" : "hidden sm:block"}`}>Histórico</span>
         </button>
         <button 
           onClick={() => setActiveTab("agenda")}

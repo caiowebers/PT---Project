@@ -8,6 +8,7 @@ import {
   getDocs, 
   setDoc, 
   addDoc,
+  updateDoc,
   deleteDoc, 
   query, 
   where,
@@ -161,6 +162,33 @@ export const storageService = {
       await setDoc(docRef, studentData);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${student.id}`);
+    }
+  },
+
+  updateStudentHealthInsights: async (studentId: string, insights: string) => {
+    try {
+      const docRef = doc(db, COLLECTION, studentId);
+      await updateDoc(docRef, { healthInsights: insights });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${studentId}`);
+    }
+  },
+
+  updateStudentWorkouts: async (studentId: string, workouts: Workout[]) => {
+    try {
+      const docRef = doc(db, COLLECTION, studentId);
+      await updateDoc(docRef, { workouts });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${studentId}`);
+    }
+  },
+
+  updateStudentWorkoutHistory: async (studentId: string, history: any[]) => {
+    try {
+      const docRef = doc(db, COLLECTION, studentId);
+      await updateDoc(docRef, { workoutHistory: history });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${COLLECTION}/${studentId}`);
     }
   },
 

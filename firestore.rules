@@ -83,9 +83,9 @@ service cloud.firestore {
       // Allow delete if owner
       allow delete: if isOwner(resource.data.adminId);
       
-      // Allow update for owner OR for students submitting feedback
+      // Allow update for owner OR for students submitting feedback/generating insights/tracking workouts
       allow update: if isOwner(resource.data.adminId) || (
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['workouts']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['workouts', 'healthInsights', 'workoutHistory']) &&
         request.resource.data.id == resource.data.id &&
         request.resource.data.shareSlug == resource.data.shareSlug &&
         request.resource.data.adminId == resource.data.adminId

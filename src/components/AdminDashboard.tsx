@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
-import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar, AlertTriangle, Beaker, Fingerprint, Star, MessageSquare, X, CalendarDays, Settings, Image as ImageIcon } from "lucide-react";
+import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar, AlertTriangle, Beaker, Fingerprint, Star, MessageSquare, X, CalendarDays, Settings, Image as ImageIcon, History as HistoryIcon, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import StudentForm from "./StudentForm";
@@ -22,6 +22,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedStudentForProgress, setSelectedStudentForProgress] = useState<Student | null>(null);
+  const [progressTab, setProgressTab] = useState<"metrics" | "history">("metrics");
   const [activeTab, setActiveTab] = useState<"students" | "workouts" | "agenda" | "settings">("students");
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
@@ -500,16 +501,36 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   </div>
                 </div>
                 <button 
-                  onClick={() => setSelectedStudentForProgress(null)}
+                  onClick={() => {
+                    setSelectedStudentForProgress(null);
+                    setProgressTab("metrics");
+                  }}
                   className="p-2 hover:bg-gray-100 rounded-full transition-all"
                 >
                   <X className="w-6 h-6 text-gray-500" />
                 </button>
               </div>
 
+              <div className="px-6 pt-4 border-b border-gray-100 flex gap-4">
+                <button 
+                  onClick={() => setProgressTab("metrics")}
+                  className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${progressTab === 'metrics' ? 'border-gym-red text-gym-red' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
+                  Métricas & Feedback
+                </button>
+                <button 
+                  onClick={() => setProgressTab("history")}
+                  className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${progressTab === 'history' ? 'border-gym-red text-gym-red' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
+                  Histórico de Treinos
+                </button>
+              </div>
+
               <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                {/* Metrics Summary */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {progressTab === "metrics" ? (
+                  <>
+                    {/* Metrics Summary */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
                     <p className="text-[10px] font-black text-gray-500 uppercase mb-1">Peso Inicial</p>
                     <p className="text-xl font-bold text-gray-900">{selectedStudentForProgress.evaluations[0]?.weight}kg</p>
@@ -584,11 +605,64 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     ))}
                   </div>
                 </div>
+              </>
+              ) : (
+                <div className="space-y-4">
+                  {selectedStudentForProgress.workoutHistory && selectedStudentForProgress.workoutHistory.length > 0 ? (
+                    selectedStudentForProgress.workoutHistory.map((session) => (
+                      <div key={session.id} className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="font-bold text-gray-900">{session.workoutName}</h4>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                              {session.date}
+                            </p>
+                          </div>
+                          <div className="bg-green-50 text-green-600 p-2 rounded-full">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                        </div>
+                        
+                        {session.feedback && (
+                          <div className="bg-gray-50 rounded-xl p-3 mb-3">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Feedback do Aluno</p>
+                            <p className="text-xs text-gray-600 italic">"{session.feedback}"</p>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            {session.exercisesCompleted.length} exercícios concluídos
+                          </span>
+                          {session.rating && (
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star 
+                                  key={star} 
+                                  className={`w-3 h-3 ${star <= session.rating! ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} 
+                                />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-12 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                        <HistoryIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 font-medium">Nenhum treino concluído ainda.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end">
                 <button 
-                  onClick={() => setSelectedStudentForProgress(null)}
+                  onClick={() => {
+                    setSelectedStudentForProgress(null);
+                    setProgressTab("metrics");
+                  }}
                   className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl font-bold text-sm text-gray-700 transition-all shadow-sm"
                 >
                   Fechar

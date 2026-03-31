@@ -15,7 +15,8 @@
         "notes": { "type": "string" },
         "evaluations": { "type": "array" },
         "measurements": { "type": "array" },
-        "workouts": { "type": "array" }
+        "workouts": { "type": "array" },
+        "workoutHistory": { "type": "array" }
       },
       "required": ["id", "adminId", "shareSlug", "name"]
     },

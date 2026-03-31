@@ -67,6 +67,16 @@ export interface ClassSession {
   googleEventId?: string;
 }
 
+export interface CompletedWorkout {
+  id: string;
+  workoutId: string;
+  workoutName: string;
+  date: string; // ISO string
+  feedback: string;
+  rating: number;
+  exercisesCompleted: string[]; // IDs of exercises marked as done
+}
+
 export interface Student {
   id: string;
   adminId: string; // This is the UID of the Personal Trainer (Admin)
@@ -84,6 +94,7 @@ export interface Student {
   photoUrl?: string;
   personalFeedback?: string;
   healthInsights?: string;
+  workoutHistory?: CompletedWorkout[];
 }
 
 export interface AdminSettings {
