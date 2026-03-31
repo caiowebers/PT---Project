@@ -152,7 +152,7 @@ export default function StudentForm() {
       <div className="flex items-center justify-between">
         <button 
           onClick={handleBack}
-          className="flex items-center gap-2 text-gray-400 transition-all hover:text-white"
+          className="flex items-center gap-2 text-gray-500 transition-all hover:text-gray-900"
         >
           <ArrowLeft className="w-5 h-5" />
           Voltar
@@ -160,10 +160,10 @@ export default function StudentForm() {
         <button 
           onClick={handleSave}
           disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2 font-bold transition-all rounded-lg bg-neon-green text-gym-dark hover:bg-neon-green/90 disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-2 font-bold transition-all rounded-lg bg-gym-red text-white hover:bg-red-800 disabled:opacity-50 shadow-md shadow-red-500/20"
         >
           {isSaving ? (
-            <div className="w-5 h-5 border-2 border-gym-dark border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
             <Save className="w-5 h-5" />
           )}
@@ -171,15 +171,15 @@ export default function StudentForm() {
         </button>
       </div>
 
-      <div className="flex gap-4 p-1 rounded-xl bg-gym-card border border-gym-border overflow-x-auto no-scrollbar">
+      <div className="flex gap-4 p-1 rounded-xl bg-white border border-gray-200 overflow-x-auto no-scrollbar shadow-sm">
         {(["profile", "physical", "workouts", "timeline"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all whitespace-nowrap ${
               activeTab === tab 
-                ? "bg-neon-green text-gym-dark" 
-                : "text-gray-400 hover:text-white hover:bg-white/5"
+                ? "bg-red-50 text-gym-red" 
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
             }`}
           >
             {tab === "profile" && "Perfil"}
@@ -194,12 +194,12 @@ export default function StudentForm() {
         key={activeTab}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-6"
+        className="bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6"
       >
         {activeTab === "profile" && (
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-400">Nome Completo</label>
+              <label className="text-sm font-medium text-gray-500">Nome Completo</label>
               <input 
                 type="text" 
                 value={student.name}
@@ -207,11 +207,11 @@ export default function StudentForm() {
                   setStudent(prev => ({ ...prev, name: (e.target as HTMLInputElement).value }));
                   setHasUnsavedChanges(true);
                 }}
-                className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-400">Idade</label>
+              <label className="text-sm font-medium text-gray-500">Idade</label>
               <input 
                 type="number" 
                 value={student.age}
@@ -219,11 +219,11 @@ export default function StudentForm() {
                   setStudent(prev => ({ ...prev, age: parseInt((e.target as HTMLInputElement).value) }));
                   setHasUnsavedChanges(true);
                 }}
-                className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-400">Objetivo</label>
+              <label className="text-sm font-medium text-gray-500">Objetivo</label>
               <input 
                 type="text" 
                 value={student.goal}
@@ -232,11 +232,11 @@ export default function StudentForm() {
                   setHasUnsavedChanges(true);
                 }}
                 placeholder="Ex: Hipertrofia e emagrecimento"
-                className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-400">Data de Início</label>
+              <label className="text-sm font-medium text-gray-500">Data de Início</label>
               <input 
                 type="date" 
                 value={student.startDate}
@@ -244,11 +244,11 @@ export default function StudentForm() {
                   setStudent(prev => ({ ...prev, startDate: (e.target as HTMLInputElement).value }));
                   setHasUnsavedChanges(true);
                 }}
-                className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <label className="text-sm font-medium text-gray-400">Notas e Recomendações</label>
+              <label className="text-sm font-medium text-gray-500">Notas e Recomendações</label>
               <textarea 
                 rows={4}
                 value={student.notes}
@@ -257,7 +257,7 @@ export default function StudentForm() {
                   setHasUnsavedChanges(true);
                 }}
                 placeholder="Ex: Hidratação diária: 3,255L..."
-                className="w-full p-3 bg-black border rounded-lg border-gym-border focus:border-neon-green outline-hidden"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
               />
             </div>
           </div>
@@ -265,7 +265,7 @@ export default function StudentForm() {
 
         {activeTab === "physical" && (
           <div className="space-y-8">
-            <div className="flex items-center gap-2 text-neon-green">
+            <div className="flex items-center gap-2 text-gym-red">
               <Activity className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-wider">Avaliação Física</h3>
             </div>
@@ -291,13 +291,13 @@ export default function StudentForm() {
                       setHasUnsavedChanges(true);
                       setIsEvalModified(true);
                     }}
-                    className="w-full p-2 bg-black border border-gym-border rounded focus:border-neon-green outline-hidden"
+                    className="w-full p-2 bg-white border border-gray-200 rounded-lg focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
                   />
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center gap-2 text-neon-orange">
+            <div className="flex items-center gap-2 text-orange-500">
               <Ruler className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-wider">Medidas Corporais (cm)</h3>
             </div>
@@ -325,7 +325,7 @@ export default function StudentForm() {
                       setHasUnsavedChanges(true);
                       setIsMeasModified(true);
                     }}
-                    className="w-full p-2 bg-black border border-gym-border rounded focus:border-neon-orange outline-hidden"
+                    className="w-full p-2 bg-white border border-gray-200 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none text-gray-900 shadow-sm"
                   />
                 </div>
               ))}
@@ -336,13 +336,13 @@ export default function StudentForm() {
         {activeTab === "workouts" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold">Planos de Treino</h3>
+              <h3 className="text-xl font-bold text-gray-900">Planos de Treino</h3>
               <button 
                 onClick={() => {
                   addWorkout();
                   setHasUnsavedChanges(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all rounded-lg bg-white/5 hover:bg-white/10 border border-gym-border"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 Adicionar Treino
@@ -350,36 +350,36 @@ export default function StudentForm() {
             </div>
 
             {student.workouts?.length === 0 ? (
-              <div className="p-12 text-center border-2 dashed border-gym-border rounded-xl">
-                <Dumbbell className="w-12 h-12 mx-auto mb-4 text-gray-700" />
+              <div className="p-12 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
+                <Dumbbell className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                 <p className="text-gray-500">Nenhum treino criado ainda.</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {student.workouts?.map((workout, idx) => {
                   const colors = [
-                    "border-neon-green/30 shadow-neon-green/5",
-                    "border-blue-400/30 shadow-blue-400/5",
-                    "border-neon-orange/30 shadow-neon-orange/5",
-                    "border-purple-400/30 shadow-purple-400/5"
+                    "border-red-200 shadow-red-100",
+                    "border-blue-200 shadow-blue-100",
+                    "border-orange-200 shadow-orange-100",
+                    "border-purple-200 shadow-purple-100"
                   ];
                   const accentColor = colors[idx % colors.length];
                   
                   return (
-                    <div key={workout.id} className={`p-6 border rounded-2xl bg-black/40 shadow-xl transition-all ${accentColor}`}>
+                    <div key={workout.id} className={`p-6 border rounded-2xl bg-white shadow-sm transition-all ${accentColor}`}>
                       <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg ${accentColor.split(' ')[0].replace('border-', 'bg-').replace('/30', '')} text-black`}>
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg ${accentColor.split(' ')[0].replace('border-', 'bg-').replace('-200', '-50')} ${accentColor.split(' ')[0].replace('border-', 'text-').replace('-200', '-600')}`}>
                             {workout.name.split(' ')[1] || workout.name[0]}
                           </div>
-                          <h4 className="font-black text-xl tracking-tight">{workout.name}</h4>
+                          <h4 className="font-black text-xl tracking-tight text-gray-900">{workout.name}</h4>
                         </div>
                         <button 
                           onClick={() => {
                             removeWorkout(workout.id);
                             setHasUnsavedChanges(true);
                           }}
-                          className="p-2 text-red-500/30 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -405,10 +405,10 @@ export default function StudentForm() {
         {activeTab === "timeline" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold tracking-tight">Histórico de Aulas</h3>
+              <h3 className="text-xl font-bold tracking-tight text-gray-900">Histórico de Aulas</h3>
               <button 
                 onClick={() => navigate("/admin", { state: { openCalendarForStudent: student.id } })}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all rounded-lg bg-neon-green text-gym-dark hover:bg-neon-green/90"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all rounded-lg bg-gym-red text-white hover:bg-red-800 shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 Agendar Aula
@@ -416,7 +416,7 @@ export default function StudentForm() {
             </div>
             
             {sessions.length === 0 ? (
-              <div className="p-12 text-center border rounded-2xl bg-black/40 border-white/5">
+              <div className="p-12 text-center border rounded-2xl bg-gray-50 border-gray-200">
                 <p className="text-gray-500">Nenhuma aula agendada ou concluída.</p>
               </div>
             ) : (
@@ -428,26 +428,26 @@ export default function StudentForm() {
                   
                   return (
                     <div key={session.id} className={`p-4 border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
-                      isCompleted ? 'bg-neon-green/5 border-neon-green/20' : 
-                      isCancelled ? 'bg-red-500/5 border-red-500/20' : 
-                      isPast ? 'bg-white/5 border-white/10 opacity-70' : 
-                      'bg-gym-card border-white/10'
+                      isCompleted ? 'bg-green-50 border-green-200' : 
+                      isCancelled ? 'bg-red-50 border-red-200' : 
+                      isPast ? 'bg-gray-50 border-gray-200 opacity-70' : 
+                      'bg-white border-gray-200 shadow-sm'
                     }`}>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                            isCompleted ? 'bg-neon-green/20 text-neon-green' : 
-                            isCancelled ? 'bg-red-500/20 text-red-500' : 
-                            isPast ? 'bg-gray-500/20 text-gray-400' : 
-                            'bg-blue-500/20 text-blue-400'
+                            isCompleted ? 'bg-green-100 text-green-700' : 
+                            isCancelled ? 'bg-red-100 text-red-700' : 
+                            isPast ? 'bg-gray-200 text-gray-500' : 
+                            'bg-blue-50 text-blue-600'
                           }`}>
                             {isCompleted ? 'Concluída' : isCancelled ? 'Cancelada' : isPast ? 'Passada' : 'Agendada'}
                           </span>
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-500">
                             {format(parseISO(session.start), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                           </span>
                         </div>
-                        <h4 className="font-bold text-lg">{session.workoutTitle}</h4>
+                        <h4 className="font-bold text-lg text-gray-900">{session.workoutTitle}</h4>
                         {session.notes && (
                           <p className="text-sm text-gray-500 mt-1">{session.notes}</p>
                         )}

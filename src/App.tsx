@@ -41,8 +41,8 @@ export default function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gym-dark">
-        <Toaster position="top-center" richColors theme="dark" />
+      <div className="min-h-screen bg-gym-bg text-gym-text">
+        <Toaster position="top-center" richColors theme="light" />
         <Routes>
           <Route 
             path="/admin/*" 

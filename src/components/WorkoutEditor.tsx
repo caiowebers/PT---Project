@@ -75,20 +75,20 @@ function SortableExerciseItem({
       animate={isHighlighted ? { 
         scale: 1,
         opacity: 1,
-        borderColor: ["rgba(255,255,255,0.05)", accentColor, "rgba(255,255,255,0.05)"],
-        backgroundColor: ["rgba(42,42,42,1)", `${accentColor}1A`, "rgba(42,42,42,1)"],
-        boxShadow: ["0 10px 15px -3px rgba(0,0,0,0.1)", `0 0 30px ${accentColor}4D`, "0 10px 15px -3px rgba(0,0,0,0.1)"]
+        borderColor: ["rgba(243,244,246,1)", accentColor, "rgba(243,244,246,1)"],
+        backgroundColor: ["rgba(255,255,255,1)", `${accentColor}1A`, "rgba(255,255,255,1)"],
+        boxShadow: ["0 8px 30px rgba(0,0,0,0.04)", `0 0 30px ${accentColor}4D`, "0 8px 30px rgba(0,0,0,0.04)"]
       } : {}}
       transition={{ 
         duration: isHighlighted ? 2 : 0.3, 
         ease: "easeOut"
       }}
-      className={`group flex flex-col gap-4 p-5 rounded-2xl bg-gym-card border border-white/5 hover:border-white/10 transition-all relative ${isDragging ? 'opacity-50 ring-2 ring-neon-green/50 shadow-2xl' : 'shadow-lg shadow-black/20'}`}
+      className={`group flex flex-col gap-4 p-5 rounded-2xl bg-white border border-gray-100 hover:border-red-200 transition-all relative ${isDragging ? 'opacity-50 ring-2 ring-red-500/50 shadow-2xl' : 'shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}
     >
       {/* Header: Drag, Title, Actions */}
       <div className="flex items-center gap-4">
-        <div {...attributes} {...listeners} className="p-2 hover:bg-white/5 rounded-lg cursor-grab active:cursor-grabbing transition-colors">
-          <GripVertical className="w-5 h-5 text-gray-600 group-hover:text-gray-400" />
+        <div {...attributes} {...listeners} className="p-2 hover:bg-gray-50 rounded-lg cursor-grab active:cursor-grabbing transition-colors">
+          <GripVertical className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
         </div>
         
         <div className="flex-1 min-w-0">
@@ -99,19 +99,19 @@ function SortableExerciseItem({
               onChange={e => setSearchTerms(prev => ({ ...prev, [exercise.id]: (e.target as HTMLInputElement).value }))}
               onKeyDown={e => e.key === 'Enter' && handleSearch(exercise.id, searchTerms[exercise.id] || "", undefined, true)}
               placeholder="Nome do Exercício..."
-              className="w-full bg-transparent border-none p-0 focus:ring-0 font-black text-xl md:text-2xl text-white placeholder:text-gray-800 transition-all uppercase tracking-tight"
+              className="w-full bg-transparent border-none p-0 focus:ring-0 font-black text-xl md:text-2xl text-gray-900 placeholder:text-gray-300 transition-all uppercase tracking-tight"
             />
-            <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-neon-green group-focus-within/title:w-full transition-all duration-300" />
+            <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gym-red group-focus-within/title:w-full transition-all duration-300" />
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">#{idx + 1}</span>
-            <span className="w-1 h-1 rounded-full bg-gray-800" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">#{idx + 1}</span>
+            <span className="w-1 h-1 rounded-full bg-gray-300" />
             <select 
               value={exercise.category}
               onChange={e => updateExercise(exercise.id, { category: (e.target as HTMLSelectElement).value as any })}
-              className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-widest text-gray-500 focus:ring-0 cursor-pointer hover:text-gray-300 transition-colors"
+              className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-widest text-gray-500 focus:ring-0 cursor-pointer hover:text-gray-700 transition-colors"
             >
-              {categories.map((c: string) => <option key={c} value={c} className="bg-gym-dark">{c}</option>)}
+              {categories.map((c: string) => <option key={c} value={c} className="bg-white">{c}</option>)}
             </select>
           </div>
         </div>
@@ -119,21 +119,21 @@ function SortableExerciseItem({
         <div className="flex items-center gap-1">
           <button 
             onClick={() => exercise.gifUrl && setPreviewImage(exercise.gifUrl)}
-            className={`p-2 rounded-xl transition-all ${exercise.gifUrl ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-700 opacity-30'}`}
+            className={`p-2 rounded-xl transition-all ${exercise.gifUrl ? 'text-blue-500 hover:bg-blue-50' : 'text-gray-300 opacity-50'}`}
             title="Ver Mídia"
           >
             <Eye className="w-5 h-5" />
           </button>
           <button 
             onClick={() => duplicateExercise(exercise)}
-            className="p-2 text-gray-600 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+            className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
             title="Duplicar"
           >
             <Copy className="w-5 h-5" />
           </button>
           <button 
             onClick={() => removeExercise(exercise.id)}
-            className="p-2 text-gray-600 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
             title="Remover"
           >
             <Trash2 className="w-5 h-5" />
@@ -145,22 +145,22 @@ function SortableExerciseItem({
       <div className="relative">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute w-3.5 h-3.5 text-gray-600 -translate-y-1/2 left-3 top-1/2" />
+            <Search className="absolute w-3.5 h-3.5 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
             <input 
               type="text" 
               value={searchTerms[exercise.id] || ""}
               onChange={e => setSearchTerms(prev => ({ ...prev, [exercise.id]: (e.target as HTMLInputElement).value }))}
               onKeyDown={e => e.key === 'Enter' && handleSearch(exercise.id, searchTerms[exercise.id] || "", undefined, true)}
               placeholder="Refinar exercício com IA..."
-              className="w-full bg-gym-dark border-none rounded-xl py-2 pl-9 pr-10 focus:ring-1 focus:ring-white/10 text-xs text-gray-300 transition-all"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-9 pr-10 focus:ring-1 focus:ring-red-500/20 focus:border-gym-red text-xs text-gray-700 transition-all"
             />
             {loading[exercise.id] && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neon-green animate-spin" />
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gym-red animate-spin" />
             )}
           </div>
           <button 
             onClick={() => handleSearch(exercise.id, searchTerms[exercise.id] || "", undefined, true)}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 transition-all"
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all"
           >
             Buscar
           </button>
@@ -173,26 +173,26 @@ function SortableExerciseItem({
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 5 }}
-              className="absolute z-50 w-full mt-2 bg-gym-card border border-white/5 rounded-2xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden"
+              className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-60 overflow-y-auto overflow-x-hidden"
             >
               {suggestions[exercise.id].map((s: any) => (
                 <button
                   key={s.id}
                   onClick={() => selectSuggestion(exercise.id, s)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-white/5 text-left border-b border-white/5 last:border-0 group/item transition-colors"
+                  className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0 group/item transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-black/20 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                     {wgerService.getExerciseImage(s) ? (
                       <img src={wgerService.getExerciseImage(s)} className="w-full h-full object-cover rounded-lg" alt="" referrerpolicy="no-referrer" />
                     ) : (
-                      <ImageIcon className="w-4 h-4 text-gray-700" />
+                      <ImageIcon className="w-4 h-4 text-gray-400" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-gray-200 truncate">{s.name}</div>
+                    <div className="text-xs font-bold text-gray-900 truncate">{s.name}</div>
                     <div className="text-[9px] text-gray-500 uppercase font-bold">{s.category} • {s.primaryMuscles[0]}</div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-700 group-hover/item:text-white transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover/item:text-gym-red transition-colors" />
                 </button>
               ))}
             </motion.div>
@@ -204,16 +204,16 @@ function SortableExerciseItem({
       <div className="grid grid-cols-12 gap-6 items-end">
         {/* Rep Type - 4 cols */}
         <div className="col-span-12 md:col-span-4 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-gray-600">Tipo de Repetição</label>
-          <div className="flex p-1 bg-gym-dark rounded-xl">
+          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Tipo de Repetição</label>
+          <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-100">
             {["Repetições", "Minutos", "Segundos"].map(type => (
               <button
                 key={type}
                 onClick={() => updateExercise(exercise.id, { repType: type as any })}
                 className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
                   (exercise.repType || "Repetições") === type 
-                    ? "bg-gym-card text-white shadow-sm" 
-                    : "text-gray-500 hover:text-gray-300"
+                    ? "bg-white text-gray-900 shadow-sm border border-gray-200" 
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 {type === "Repetições" ? "Reps" : type}
@@ -224,16 +224,16 @@ function SortableExerciseItem({
 
         {/* Load Unit - 4 cols */}
         <div className="col-span-12 md:col-span-4 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-gray-600">Unidade de Carga</label>
-          <div className="flex p-1 bg-gym-dark rounded-xl">
+          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Unidade de Carga</label>
+          <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-100">
             {["Kg", "Libras", "Pesos", "%"].map(unit => (
               <button
                 key={unit}
                 onClick={() => updateExercise(exercise.id, { loadUnit: unit as any })}
                 className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
                   (exercise.loadUnit || "Kg") === unit 
-                    ? "bg-gym-card text-white shadow-sm" 
-                    : "text-gray-500 hover:text-gray-300"
+                    ? "bg-white text-gray-900 shadow-sm border border-gray-200" 
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 {unit}
@@ -245,8 +245,8 @@ function SortableExerciseItem({
         {/* Rest Slider - 4 cols */}
         <div className="col-span-12 md:col-span-4 space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-600">Descanso</label>
-            <span className="text-xs font-black text-white">{exercise.rest}</span>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Descanso</label>
+            <span className="text-xs font-black text-gray-900">{exercise.rest}</span>
           </div>
           <div className="flex items-center gap-3">
             <input 
@@ -256,22 +256,22 @@ function SortableExerciseItem({
               step="5"
               value={parseInt(exercise.rest) || 60}
               onChange={e => updateExercise(exercise.id, { rest: `${(e.target as HTMLInputElement).value}s` })}
-              className="flex-1 h-1 bg-gym-dark rounded-full appearance-none cursor-pointer accent-white"
+              className="flex-1 h-1 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gym-red"
             />
           </div>
         </div>
       </div>
 
       {/* Sets Management */}
-      <div className="pt-4 border-t border-white/5">
+      <div className="pt-4 border-t border-gray-100">
         <div className="flex items-center justify-between mb-3">
-          <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-600">Séries e Cargas</h5>
+          <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Séries e Cargas</h5>
           <button 
             onClick={() => {
               const newSets = [...(exercise.sets || []), { id: uuidv4(), reps: "10", load: "0" }];
               updateExercise(exercise.id, { sets: newSets, reps: `${newSets.length} sets` });
             }}
-            className="text-[9px] font-black uppercase tracking-widest text-white hover:text-neon-green transition-colors flex items-center gap-1"
+            className="text-[9px] font-black uppercase tracking-widest text-gym-red hover:text-red-800 transition-colors flex items-center gap-1"
           >
             <Plus className="w-3 h-3" /> Novo Set
           </button>
@@ -279,8 +279,8 @@ function SortableExerciseItem({
         
         <div className="flex flex-wrap gap-3">
           {(exercise.sets || []).map((set, sIdx) => (
-            <div key={set.id} className="flex items-center gap-2 bg-gym-dark p-2 rounded-xl border border-transparent hover:border-white/10 transition-all group/set">
-              <span className="text-[9px] font-black text-gray-600 w-4">S{sIdx + 1}</span>
+            <div key={set.id} className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-200 hover:border-red-200 transition-all group/set">
+              <span className="text-[9px] font-black text-gray-400 w-4">S{sIdx + 1}</span>
               <div className="flex items-center gap-2">
                 <input 
                   type="text" 
@@ -290,10 +290,10 @@ function SortableExerciseItem({
                     newSets[sIdx] = { ...set, reps: (e.target as HTMLInputElement).value };
                     updateExercise(exercise.id, { sets: newSets });
                   }}
-                  className="w-8 bg-transparent border-none p-0 text-center text-xs font-bold focus:ring-0 text-white"
+                  className="w-8 bg-transparent border-none p-0 text-center text-xs font-bold focus:ring-0 text-gray-900"
                   placeholder="0"
                 />
-                <span className="text-[8px] text-gray-700 font-black">×</span>
+                <span className="text-[8px] text-gray-400 font-black">×</span>
                 <input 
                   type="text" 
                   value={set.load}
@@ -302,7 +302,7 @@ function SortableExerciseItem({
                     newSets[sIdx] = { ...set, load: (e.target as HTMLInputElement).value };
                     updateExercise(exercise.id, { sets: newSets });
                   }}
-                  className="w-10 bg-transparent border-none p-0 text-center text-xs font-bold focus:ring-0 text-white"
+                  className="w-10 bg-transparent border-none p-0 text-center text-xs font-bold focus:ring-0 text-gray-900"
                   placeholder="0"
                 />
               </div>
@@ -311,7 +311,7 @@ function SortableExerciseItem({
                   const newSets = (exercise.sets || []).filter(s => s.id !== set.id);
                   updateExercise(exercise.id, { sets: newSets, reps: `${newSets.length} sets` });
                 }}
-                className="p-1 text-gray-700 hover:text-red-500 opacity-0 group-hover/set:opacity-100 transition-all"
+                className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover/set:opacity-100 transition-all"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -323,7 +323,7 @@ function SortableExerciseItem({
   );
 }
 
-export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--neon-green)" }: WorkoutEditorProps) {
+export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--gym-red)" }: WorkoutEditorProps) {
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const [suggestions, setSuggestions] = useState<Record<string, WgerExercise[]>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -587,14 +587,14 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     <div className="flex flex-col lg:flex-row gap-8 relative">
       <div className="flex-1 min-w-0 space-y-6">
         {/* Compact Search & Filter Library */}
-        <div className="bg-gym-card rounded-2xl p-4 shadow-xl border border-white/5">
+        <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
           <div className="flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-1 w-full">
-              <Search className="absolute w-4 h-4 text-gray-600 -translate-y-1/2 left-4 top-1/2" />
+              <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-4 top-1/2" />
               <input 
                 type="text" 
                 placeholder="Pesquisar na biblioteca de exercícios..."
-                className="w-full bg-gym-dark border-none rounded-2xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-white/10 font-bold text-xs text-white transition-all placeholder:text-gray-700"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-red-500/20 focus:border-gym-red font-bold text-xs text-gray-900 transition-all placeholder:text-gray-500"
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
                     addExercise(e.currentTarget.value);
@@ -611,8 +611,8 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                   onClick={() => setLibraryMuscle(libraryMuscle === m ? null : m)}
                   className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border ${
                     libraryMuscle === m 
-                      ? 'bg-white text-black border-white' 
-                      : 'bg-gym-dark border-transparent text-gray-500 hover:text-gray-300'
+                      ? 'bg-gym-red text-white border-gym-red shadow-sm' 
+                      : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   {m}
@@ -623,12 +623,12 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
 
           {/* Compact Suggestions Row */}
           {libraryMuscle && (
-            <div className="mt-4 pt-4 border-t border-white/5 flex gap-2 overflow-x-auto no-scrollbar">
+            <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
               {wgerService.getPopularExercises(libraryMuscle).map(exName => (
                 <button
                   key={exName}
                   onClick={() => addExercise(exName)}
-                  className="px-3 py-2 rounded-xl bg-gym-dark hover:bg-gym-border text-[10px] font-bold text-gray-300 transition-all whitespace-nowrap"
+                  className="px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-[10px] font-bold text-gray-700 transition-all whitespace-nowrap"
                 >
                   {exName} +
                 </button>
@@ -678,7 +678,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
 
         <button 
           onClick={addExercise}
-          className="w-full py-6 border-2 border-dashed border-white/5 rounded-3xl text-gray-700 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all flex items-center justify-center gap-3 font-black uppercase text-xs tracking-[0.2em]"
+          className="w-full py-6 border-2 border-dashed border-gray-200 rounded-3xl text-gray-500 hover:text-gym-red hover:border-red-200 hover:bg-red-50 transition-all flex items-center justify-center gap-3 font-black uppercase text-xs tracking-[0.2em]"
         >
           <Plus className="w-5 h-5" />
           Novo Exercício
@@ -688,14 +688,14 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
       {/* Sticky Sidebar Summary */}
       <div className="lg:w-80 shrink-0">
         <div className="lg:sticky lg:top-24 space-y-6">
-          <div className="bg-gym-card p-6 rounded-3xl border border-white/5 shadow-2xl">
+          <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
             <div className="flex items-center justify-between mb-8">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600 flex items-center gap-2">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 Resumo do Treino
               </h4>
               {workout.lastUpdated && (
-                <span className="text-[8px] font-bold text-gray-800 uppercase tracking-widest">
+                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
                   Atu: {workout.lastUpdated}
                 </span>
               )}
@@ -704,32 +704,32 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-500">Exercícios</span>
-                <span className="text-lg font-black text-white">{stats.totalExercises}</span>
+                <span className="text-lg font-black text-gray-900">{stats.totalExercises}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-500">Séries Totais</span>
-                <span className="text-lg font-black text-white">{stats.totalSets}</span>
+                <span className="text-lg font-black text-gray-900">{stats.totalSets}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-500">Tempo Estimado</span>
-                <div className="flex items-center gap-2 text-lg font-black text-white">
-                  <Clock className="w-4 h-4 text-gray-600" />
+                <div className="flex items-center gap-2 text-lg font-black text-gray-900">
+                  <Clock className="w-4 h-4 text-gray-400" />
                   {stats.estimatedTime}m
                 </div>
               </div>
 
-              <div className="pt-8 border-t border-white/5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-700 mb-4 block">Distribuição de Volume</span>
+              <div className="pt-8 border-t border-gray-100">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 block">Distribuição de Volume</span>
                 <div className="space-y-4">
                   {Object.entries(stats.muscleVolume).map(([muscle, volume]) => (
                     <div key={muscle} className="space-y-2">
                       <div className="flex justify-between text-[10px] font-black uppercase tracking-wider">
                          <span className="text-gray-500">{muscle}</span>
-                         <span className="text-white">{volume} séries</span>
+                         <span className="text-gray-900">{volume} séries</span>
                       </div>
-                      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-neon-green transition-all duration-700 ease-out" 
+                          className="h-full bg-gym-red transition-all duration-700 ease-out" 
                           style={{ width: `${Math.min(100, ((volume as number) / 20) * 100)}%` }}
                         />
                       </div>
@@ -740,7 +740,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
 
               <button 
                 onClick={optimizeWorkout}
-                className="w-full py-4 bg-neon-green text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-xl shadow-neon-green/20 mt-4"
+                className="w-full py-4 bg-gym-red text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md shadow-red-500/20 mt-4"
               >
                 <Zap className="w-4 h-4" />
                 Otimizar Treino
@@ -749,7 +749,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
               <button 
                 onClick={fetchMissingMedia}
                 disabled={isFetchingMedia || workout.exercises.every(ex => ex.gifUrl)}
-                className="w-full py-4 bg-gym-dark text-white border border-white/5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 mt-2"
+                className="w-full py-4 bg-white text-gray-700 border border-gray-200 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 mt-2 shadow-sm"
               >
                 {isFetchingMedia ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -770,14 +770,14 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
             onClick={() => setPreviewImage(null)}
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-2xl w-full aspect-square bg-gym-card border border-gym-border rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
+              className="relative max-w-2xl w-full aspect-square bg-white border border-gray-100 rounded-[32px] overflow-hidden shadow-2xl flex items-center justify-center"
               onClick={e => e.stopPropagation()}
             >
               <img 
