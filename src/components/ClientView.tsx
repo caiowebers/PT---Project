@@ -5,9 +5,6 @@ import {
   CheckCircle2,
   Check,
   X,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
   Calendar as CalendarIcon,
   Activity,
   Dumbbell,
@@ -18,7 +15,9 @@ import {
   Sparkles,
   TrendingUp,
   Scale,
-  Target
+  Target,
+  User,
+  Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -26,7 +25,7 @@ import { Student, ClassSession, Exercise, AdminSettings, CompletedWorkout, Worko
 import { storageService } from "../services/storageService";
 import { v4 as uuidv4 } from "uuid";
 import { wgerService } from "../services/wgerService";
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay, addHours } from "date-fns";
+import { format, parseISO, addHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   LineChart, 
@@ -61,10 +60,6 @@ export default function ClientView() {
   });
   const [isRequesting, setIsRequesting] = useState(false);
   
-  // Calendar state
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-
   useEffect(() => {
     let unsubscribeSessions: (() => void) | null = null;
 
@@ -217,7 +212,7 @@ export default function ClientView() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center bg-gym-bg">
-      <div className="w-12 h-12 border-4 border-gym-red border-t-transparent rounded-full animate-spin mb-4" />
+      <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin mb-4" />
       <p className="text-gym-muted">A carregar...</p>
     </div>
   );
@@ -229,22 +224,10 @@ export default function ClientView() {
     </div>
   );
 
-  // Calendar logic
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(monthStart);
-  const startDate = monthStart;
-  const endDate = monthEnd;
-  const dateFormat = "d";
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
-  const startDayOfWeek = getDay(monthStart);
-
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-
   return (
     <div className="min-h-screen bg-gym-bg pb-32 font-sans text-gym-text relative">
-      {/* Header - Red Background */}
-      <div className="bg-gym-red h-48 w-full rounded-b-3xl relative flex items-center justify-center">
+      {/* Header - Black Background */}
+      <div className="bg-black h-48 w-full rounded-b-3xl relative flex items-center justify-center">
         {adminSettings?.logoUrl ? (
           <div className="max-w-[200px] max-h-[100px] flex items-center justify-center">
             <img src={adminSettings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
@@ -326,7 +309,7 @@ export default function ClientView() {
               {student.personalFeedback && (
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] space-y-4">
                   <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-gym-red" />
+                    <MessageSquare className="w-4 h-4 text-black" />
                     Feedback do Personal
                   </h3>
                   <p className="text-sm text-gray-700 leading-relaxed italic">
@@ -336,16 +319,16 @@ export default function ClientView() {
               )}
 
               {/* AI Insights Section */}
-              <div className="bg-red-50 rounded-[32px] p-6 border border-red-100 space-y-4">
+              <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-gym-red flex items-center gap-2">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900 flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
                     Insights de Saúde (IA)
                   </h3>
                   <button
                     onClick={handleGenerateInsights}
                     disabled={isGeneratingInsights}
-                    className="flex items-center gap-2 px-4 py-1.5 bg-white text-gym-red rounded-full text-[10px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-1.5 bg-white text-gray-900 rounded-full text-[10px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
                   >
                     {isGeneratingInsights ? (
                       <>
@@ -361,13 +344,13 @@ export default function ClientView() {
                   </button>
                 </div>
                 {student.healthInsights ? (
-                  <div className="text-sm text-red-900 leading-relaxed space-y-2">
+                  <div className="text-sm text-gray-900 leading-relaxed space-y-2">
                     {student.healthInsights.split('\n').map((line, i) => (
                       <p key={i}>{line}</p>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-red-400 italic">
+                  <p className="text-xs text-gray-400 italic">
                     Clique no botão acima para gerar insights de saúde baseados nos seus dados.
                   </p>
                 )}
@@ -378,7 +361,7 @@ export default function ClientView() {
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-gym-red" />
+                      <TrendingUp className="w-4 h-4 text-black" />
                       Evolução de Peso
                     </h3>
                   </div>
@@ -387,8 +370,8 @@ export default function ClientView() {
                       <AreaChart data={student.evaluations}>
                         <defs>
                           <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#E31C25" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#E31C25" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#000000" stopOpacity={0.1}/>
+                            <stop offset="95%" stopColor="#000000" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -409,7 +392,7 @@ export default function ClientView() {
                           contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
                           labelFormatter={(val) => format(parseISO(val), 'dd/MM/yyyy')}
                         />
-                        <Area type="monotone" dataKey="weight" stroke="#E31C25" strokeWidth={3} fillOpacity={1} fill="url(#colorWeight)" />
+                        <Area type="monotone" dataKey="weight" stroke="#000000" strokeWidth={3} fillOpacity={1} fill="url(#colorWeight)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -418,7 +401,7 @@ export default function ClientView() {
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 flex items-center gap-2">
-                      <Target className="w-4 h-4 text-gym-red" />
+                      <Target className="w-4 h-4 text-black" />
                       Composição Corporal
                     </h3>
                   </div>
@@ -464,7 +447,7 @@ export default function ClientView() {
                   <div key={workout.id} className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="font-bold text-gray-900 text-lg">{workout.name}</h3>
-                      <div className="bg-red-50 text-gym-red px-3 py-1 rounded-full text-xs font-bold">
+                      <div className="bg-gray-100 text-gray-900 px-3 py-1 rounded-full text-xs font-bold">
                         {workout.exercises.length} exercícios
                       </div>
                     </div>
@@ -501,7 +484,7 @@ export default function ClientView() {
                               {!aiDescriptions[exercise.id] && !generatingDesc[exercise.id] && !exercise.description && (
                                 <button 
                                   onClick={() => generateDescription(exercise)}
-                                  className="text-[9px] font-bold text-gym-red hover:underline"
+                                  className="text-[9px] font-bold text-black hover:underline"
                                 >
                                   Gerar
                                 </button>
@@ -534,13 +517,13 @@ export default function ClientView() {
                           value={workoutFeedback}
                           onChange={(e) => setWorkoutFeedback(e.target.value)}
                           placeholder="Como foi o treino hoje? Alguma dor ou dificuldade?"
-                          className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-gym-red/20 transition-all min-h-[80px]"
+                          className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[80px]"
                         />
                       </div>
                       <button 
                         onClick={() => finishWorkout(workout)}
                         disabled={isFinishing === workout.id}
-                        className="w-full bg-gym-red text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 hover:bg-red-800 transition-all disabled:opacity-50"
+                        className="w-full bg-black text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-black/20 hover:bg-gray-900 transition-all disabled:opacity-50"
                       >
                         {isFinishing === workout.id ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -610,7 +593,7 @@ export default function ClientView() {
                     <p className="text-gray-400 font-medium">Você ainda não concluiu nenhum treino.</p>
                     <button 
                       onClick={() => setActiveTab("treino")}
-                      className="mt-4 text-gym-red font-bold text-sm hover:underline"
+                      className="mt-4 text-black font-bold text-sm hover:underline"
                     >
                       Começar agora
                     </button>
@@ -629,68 +612,18 @@ export default function ClientView() {
               className="space-y-6"
             >
               <div className="flex items-center justify-between px-2">
-                <h2 className="text-lg font-bold text-gray-800">Meu Calendário</h2>
+                <h2 className="text-lg font-bold text-gray-800">Minha Agenda</h2>
                 <button 
                   onClick={() => setIsRequestModalOpen(true)}
-                  className="bg-gym-red px-6 py-2 rounded-full text-sm font-bold shadow-md shadow-red-500/20 text-white hover:bg-red-800 transition-all"
+                  className="bg-black px-6 py-2 rounded-full text-sm font-bold shadow-md shadow-black/20 text-white hover:bg-gray-900 transition-all"
                 >
                   Marcar
                 </button>
               </div>
 
-              {/* Calendar Widget */}
-              <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
-                <div className="flex items-center justify-between mb-6">
-                  <button onClick={prevMonth} className="p-2 hover:bg-gray-50 rounded-full transition-colors"><ChevronLeft className="w-5 h-5 text-gray-600" /></button>
-                  <div className="flex gap-2">
-                    <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium capitalize">
-                      {format(currentDate, "MMM", { locale: ptBR })}
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium">
-                      {format(currentDate, "yyyy")}
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    </div>
-                  </div>
-                  <button onClick={nextMonth} className="p-2 hover:bg-gray-50 rounded-full transition-colors"><ChevronRight className="w-5 h-5 text-gray-600" /></button>
-                </div>
-
-                <div className="grid grid-cols-7 gap-y-4 text-center">
-                  {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, i) => (
-                    <div key={`header-${i}`} className="text-xs font-bold text-gray-400">{day}</div>
-                  ))}
-                  
-                  {Array.from({ length: startDayOfWeek }).map((_, i) => (
-                    <div key={`empty-${i}`} />
-                  ))}
-
-                  {days.map(day => {
-                    const isSelected = selectedDate && isSameDay(day, selectedDate);
-                    const isToday = isSameDay(day, new Date());
-                    
-                    return (
-                      <div key={day.toString()} className="flex justify-center">
-                        <button 
-                          onClick={() => setSelectedDate(day)}
-                          className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-medium transition-all ${
-                            isSelected 
-                              ? "bg-gym-red text-white shadow-md shadow-red-500/20" 
-                              : isToday
-                                ? "bg-red-50 text-gym-red"
-                                : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          {format(day, dateFormat)}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Agenda List */}
               <div className="space-y-4">
-                {sessions.length > 0 ? sessions.map(session => {
+                {sessions.length > 0 ? [...sessions].sort((a, b) => a.start.localeCompare(b.start)).map(session => {
                   const start = parseISO(session.start);
                   const end = parseISO(session.end);
                   
@@ -701,7 +634,7 @@ export default function ClientView() {
                         <div className="flex flex-col items-center justify-between h-16 text-xs font-medium text-gray-600 relative">
                           <div>{format(start, "HH:mm")}</div>
                           <div className="w-px h-6 bg-gray-200 my-1" />
-                          <div className="text-gym-red font-bold">{format(end, "HH:mm")}</div>
+                          <div className="text-black font-bold">{format(end, "HH:mm")}</div>
                         </div>
 
                         {/* Details */}
@@ -743,19 +676,15 @@ export default function ClientView() {
                     </div>
                   );
                 }) : (
-                  <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex items-center justify-between opacity-60">
-                    <div className="flex items-center gap-4">
-                      {/* Mock Data for visual matching if no sessions exist */}
-                      <div className="flex flex-col items-center justify-between h-16 text-xs font-medium text-gray-600 relative">
-                        <div>08:00</div>
-                        <div className="w-px h-6 bg-gray-200 my-1" />
-                        <div className="text-gym-red font-bold">09:00</div>
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-base">Nenhuma aula hoje</h3>
-                        <p className="text-xs text-gray-600 mt-1">Selecione outra data</p>
-                      </div>
-                    </div>
+                  <div className="bg-white rounded-[32px] p-12 shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-center">
+                    <CalendarIcon className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium">Nenhuma aula agendada no momento.</p>
+                    <button 
+                      onClick={() => setIsRequestModalOpen(true)}
+                      className="mt-4 text-black font-bold text-sm hover:underline"
+                    >
+                      Solicitar um horário
+                    </button>
                   </div>
                 )}
               </div>
@@ -767,59 +696,96 @@ export default function ClientView() {
       {/* Session Request Modal */}
       <AnimatePresence>
         {isRequestModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl"
+              className="w-full max-w-md bg-white rounded-[40px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-100"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <h3 className="text-xl font-bold text-gray-900">Solicitar Treino</h3>
-                <button onClick={() => setIsRequestModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-full transition-all">
-                  <X className="w-6 h-6 text-gray-500" />
+              <div className="px-8 pt-8 pb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Solicitar Treino</h3>
+                  <p className="text-sm text-gray-400 font-medium mt-1">Escolha o melhor horário para você</p>
+                </div>
+                <button 
+                  onClick={() => setIsRequestModalOpen(false)} 
+                  className="p-2.5 hover:bg-gray-50 rounded-2xl transition-all text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <form onSubmit={handleRequestSession} className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase">Data</label>
-                  <input
-                    type="date"
-                    value={requestData.date}
-                    onChange={(e) => setRequestData({ ...requestData, date: (e.target as HTMLInputElement).value })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-gym-red"
-                    required
-                  />
+              <form onSubmit={handleRequestSession} className="p-8 pt-4 space-y-6">
+                {/* Student Info (Self) */}
+                <div className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-[24px] border border-gray-100">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-900">
+                    <User className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{student?.name}</p>
+                    <p className="text-xs text-gray-400 font-medium">Seu perfil</p>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase">Hora</label>
-                  <input
-                    type="time"
-                    value={requestData.time}
-                    onChange={(e) => setRequestData({ ...requestData, time: (e.target as HTMLInputElement).value })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-gym-red"
-                    required
-                  />
+                {/* iOS Style Date & Time Selection */}
+                <div className="space-y-6 bg-gray-50/50 p-6 rounded-[32px] border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                        <CalendarIcon className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-bold text-gray-700">Data</span>
+                    </div>
+                    <input
+                      type="date"
+                      value={requestData.date}
+                      onChange={(e) => setRequestData({ ...requestData, date: (e.target as HTMLInputElement).value })}
+                      className="bg-gray-200/50 hover:bg-gray-200 px-4 py-2 rounded-xl text-sm font-bold text-gray-900 outline-none transition-colors cursor-pointer"
+                      required
+                    />
+                  </div>
+
+                  <div className="h-px bg-gray-200/50 w-full" />
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-bold text-gray-700">Horário</span>
+                    </div>
+                    <input
+                      type="time"
+                      value={requestData.time}
+                      onChange={(e) => setRequestData({ ...requestData, time: (e.target as HTMLInputElement).value })}
+                      className="bg-gray-200/50 hover:bg-gray-200 px-4 py-2 rounded-xl text-sm font-bold text-gray-900 outline-none transition-colors cursor-pointer"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase">Observações</label>
-                  <textarea
-                    value={requestData.notes}
-                    onChange={(e) => setRequestData({ ...requestData, notes: (e.target as HTMLTextAreaElement).value })}
-                    placeholder="Algum recado para o instrutor?"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-gym-red h-24 resize-none"
-                  />
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Observações</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-4 w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                      <MessageSquare className="w-4 h-4" />
+                    </div>
+                    <textarea
+                      value={requestData.notes}
+                      onChange={(e) => setRequestData({ ...requestData, notes: (e.target as HTMLTextAreaElement).value })}
+                      placeholder="Algum recado para o instrutor?"
+                      className="w-full bg-gray-50/50 border border-gray-100 rounded-[24px] py-4 pl-14 pr-6 text-sm font-semibold text-gray-700 outline-none focus:border-gray-200 focus:bg-white focus:ring-4 focus:ring-gray-500/5 transition-all h-28 resize-none"
+                    />
+                  </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={isRequesting}
-                  className="w-full py-4 bg-gym-red text-white rounded-2xl font-bold hover:bg-red-800 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-5 bg-black text-white rounded-full font-bold text-base shadow-xl shadow-black/20 hover:bg-gray-900 hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-3"
                 >
-                  {isRequesting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                  {isRequesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                   {isRequesting ? "Enviando..." : "Enviar Solicitação"}
                 </button>
               </form>
@@ -832,28 +798,28 @@ export default function ClientView() {
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.08)] px-2 py-2 flex items-center justify-between text-xs font-medium z-50 border border-gray-100">
         <button 
           onClick={() => setActiveTab("saude")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "saude" ? "bg-red-50 text-gym-red" : "text-gray-600 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "saude" ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-50"}`}
         >
           <Activity className="w-4 h-4" />
           <span className={`${activeTab === "saude" ? "block" : "hidden sm:block"}`}>Saúde</span>
         </button>
         <button 
           onClick={() => setActiveTab("treino")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "treino" ? "bg-red-50 text-gym-red" : "text-gray-600 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "treino" ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-50"}`}
         >
           <Dumbbell className="w-4 h-4" />
           <span className={`${activeTab === "treino" ? "block" : "hidden sm:block"}`}>Treino</span>
         </button>
         <button 
           onClick={() => setActiveTab("historico")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "historico" ? "bg-red-50 text-gym-red" : "text-gray-600 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "historico" ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-50"}`}
         >
           <History className="w-4 h-4" />
           <span className={`${activeTab === "historico" ? "block" : "hidden sm:block"}`}>Histórico</span>
         </button>
         <button 
           onClick={() => setActiveTab("agenda")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "agenda" ? "bg-red-50 text-gym-red" : "text-gray-600 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full transition-all ${activeTab === "agenda" ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-50"}`}
         >
           <CalendarIcon className="w-4 h-4" />
           <span className={`${activeTab === "agenda" ? "block" : "hidden sm:block"}`}>Agenda</span>

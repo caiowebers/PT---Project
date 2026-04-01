@@ -97,7 +97,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   );
 
   const stats = [
-    { label: "Total Alunos", value: students.length, icon: Users, color: "text-gym-red", bg: "bg-red-50" },
+    { label: "Total Alunos", value: students.length, icon: Users, color: "text-gray-900", bg: "bg-gray-100" },
     { label: "Treinos Ativos", value: students.reduce((acc, s) => acc + s.workouts.length, 0), icon: Activity, color: "text-orange-500", bg: "bg-orange-50" },
     { label: "Novos (Mês)", value: students.filter(s => {
       const start = new Date(s.startDate);
@@ -111,8 +111,8 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       {/* Sidebar */}
       <aside className="w-full p-6 border-r md:w-64 border-gray-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] z-10">
         <div className="flex items-center gap-2 mb-10">
-          <div className="p-2 rounded-lg bg-red-50">
-            <Users className="w-6 h-6 text-gym-red" />
+          <div className="p-2 rounded-lg bg-gray-100">
+            <Users className="w-6 h-6 text-gray-900" />
           </div>
           <span className="text-xl font-bold tracking-tighter text-gray-900">GymFlow Admin</span>
         </div>
@@ -120,35 +120,35 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
         <nav className="space-y-2">
           <button 
             onClick={() => setActiveTab("students")}
-            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'students' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'students' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
           >
             <Users className="w-5 h-5" />
             <span>Alunos</span>
           </button>
           <button 
             onClick={() => setActiveTab("workouts")}
-            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'workouts' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'workouts' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
           >
             <TrendingUp className="w-5 h-5" />
             <span>Treinos</span>
           </button>
           <button 
             onClick={() => setActiveTab("agenda")}
-            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'agenda' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'agenda' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
           >
             <CalendarDays className="w-5 h-5" />
             <span>Agenda</span>
           </button>
           <button 
             onClick={() => setActiveTab("settings")}
-            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'settings' ? 'bg-red-50 text-gym-red' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl font-medium ${activeTab === 'settings' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
           >
             <Settings className="w-5 h-5" />
             <span>Definições</span>
           </button>
           <button 
             onClick={onLogout}
-            className="flex items-center w-full gap-3 p-3 transition-all rounded-xl hover:bg-red-50 text-gray-600 hover:text-red-500 font-medium mt-8"
+            className="flex items-center w-full gap-3 p-3 transition-all rounded-xl hover:bg-gray-100 text-gray-600 hover:text-gray-900 font-medium mt-8"
           >
             <LogOut className="w-5 h-5" />
             <span>Sair</span>
@@ -204,7 +204,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     </button>
                     <button 
                       onClick={() => navigate("/admin/new")}
-                      className="flex items-center justify-center gap-2 px-6 py-3 font-bold transition-all rounded-xl bg-gym-red text-white hover:bg-red-800 shadow-md shadow-red-500/20"
+                      className="flex items-center justify-center gap-2 px-6 py-3 font-bold transition-all rounded-xl bg-black text-white hover:bg-gray-900 shadow-md shadow-black/20"
                     >
                       <Plus className="w-5 h-5" />
                       Novo Aluno
@@ -234,7 +234,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     placeholder="Procurar aluno..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
-                    className="w-full py-4 pl-12 pr-4 text-gray-900 transition-all bg-white border rounded-2xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none shadow-sm"
+                    className="w-full py-4 pl-12 pr-4 text-gray-900 transition-all bg-white border rounded-2xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none shadow-sm"
                   />
                 </div>
 
@@ -249,11 +249,11 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                         key={student.id}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center justify-between p-5 transition-all bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:border-red-200 hover:shadow-md group cursor-pointer"
+                        className="flex items-center justify-between p-5 transition-all bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:border-gray-200 hover:shadow-md group cursor-pointer"
                         onClick={() => navigate(`/admin/edit/${student.id}`)}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="flex items-center justify-center w-12 h-12 font-bold rounded-xl bg-red-50 text-gym-red text-lg">
+                          <div className="flex items-center justify-center w-12 h-12 font-bold rounded-xl bg-gray-100 text-gray-900 text-lg">
                             {student.name.charAt(0)}
                           </div>
                           <div>
@@ -265,7 +265,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                                   navigator.clipboard.writeText(student.id);
                                   toast.success("UUID copiado para a área de transferência!");
                                 }}
-                                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gym-red transition-all"
+                                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-all"
                                 title={`Copiar UUID: ${student.id}`}
                               >
                                 <Fingerprint className="w-4 h-4" />
@@ -285,7 +285,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleShare(student.shareSlug); }}
-                            className="p-2.5 transition-all rounded-xl hover:bg-red-50 text-gray-500 hover:text-gym-red"
+                            className="p-2.5 transition-all rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-900"
                             title="Partilhar Link"
                           >
                             <Share2 className="w-5 h-5" />
@@ -299,12 +299,12 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleDelete(student.id); }}
-                            className="p-2.5 transition-all rounded-xl hover:bg-red-50 text-gray-500 hover:text-red-500"
+                            className="p-2.5 transition-all rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-900"
                             title="Remover"
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
-                          <ChevronRight className="w-5 h-5 ml-2 text-gray-300 group-hover:text-gym-red transition-colors" />
+                          <ChevronRight className="w-5 h-5 ml-2 text-gray-300 group-hover:text-gray-900 transition-colors" />
                         </div>
                       </motion.div>
                     ))
@@ -351,7 +351,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                       placeholder="Procurar treino ou exercício..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
-                      className="w-full py-4 pl-12 pr-4 text-gray-900 transition-all bg-white border rounded-2xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none shadow-sm"
+                      className="w-full py-4 pl-12 pr-4 text-gray-900 transition-all bg-white border rounded-2xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none shadow-sm"
                     />
                   </div>
 
@@ -376,11 +376,11 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                           key={workout.id}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          className="flex items-center justify-between p-5 transition-all bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:border-red-200 hover:shadow-md group cursor-pointer"
+                          className="flex items-center justify-between p-5 transition-all bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:border-gray-200 hover:shadow-md group cursor-pointer"
                           onClick={() => setSelectedWorkout(workout)}
                         >
                           <div className="flex items-center gap-4">
-                            <div className="flex items-center justify-center w-12 h-12 font-bold rounded-xl bg-red-50 text-gym-red text-lg">
+                            <div className="flex items-center justify-center w-12 h-12 font-bold rounded-xl bg-gray-100 text-gray-900 text-lg">
                               {workout.name.charAt(0)}
                             </div>
                             <div>
@@ -388,7 +388,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                               <p className="text-sm text-gray-600 mt-0.5">Aluno: <span className="font-medium">{workout.studentName}</span></p>
                             </div>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gym-red transition-colors" />
+                          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-900 transition-colors" />
                         </motion.div>
                       ))
                     )}
@@ -407,7 +407,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-8">
                   <div className="space-y-4">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                      <ImageIcon className="w-5 h-5 text-gym-red" />
+                      <ImageIcon className="w-5 h-5 text-gray-900" />
                       Logotipo Personalizado
                     </h3>
                     <p className="text-sm text-gray-500">Este logotipo aparecerá no topo da página individual de cada aluno.</p>
@@ -436,7 +436,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                                 reader.readAsDataURL(file);
                               }
                             }}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-gym-red hover:file:bg-red-100 transition-all"
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-900 hover:file:bg-gray-200 transition-all"
                           />
                         </label>
                         <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Recomendado: PNG transparente, máx 500kb</p>
@@ -451,7 +451,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                       value={adminSettings?.instructorName || ""}
                       onChange={(e) => setAdminSettings(prev => prev ? ({ ...prev, instructorName: (e.target as HTMLInputElement).value }) : ({ id: currentUser?.uid, instructorName: (e.target as HTMLInputElement).value }))}
                       placeholder="Seu nome profissional"
-                      className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                      className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
                     />
                   </div>
 
@@ -465,7 +465,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                       }
                     }}
                     disabled={isSavingSettings}
-                    className="w-full py-4 bg-gym-red text-white font-bold rounded-2xl hover:bg-red-800 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+                    className="w-full py-4 bg-black text-white font-bold rounded-2xl hover:bg-gray-900 transition-all shadow-lg shadow-black/20 disabled:opacity-50"
                   >
                     {isSavingSettings ? "Guardando..." : "Guardar Alterações"}
                   </button>
@@ -492,7 +492,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-gym-red font-bold text-xl">
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-900 font-bold text-xl">
                     {selectedStudentForProgress.name.charAt(0)}
                   </div>
                   <div>
@@ -558,7 +558,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 {/* Workout Feedback */}
                 <div className="space-y-4">
                   <h4 className="text-sm font-bold uppercase tracking-widest text-gray-600 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-gym-red" />
+                    <Star className="w-4 h-4 text-gray-900" />
                     Feedback dos Treinos
                   </h4>
                   <div className="grid gap-3">
@@ -590,16 +590,16 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 </div>
 
                 {/* Evolution Chart Placeholder (Visual only) */}
-                <div className="p-6 rounded-3xl bg-red-50 border border-red-100">
+                <div className="p-6 rounded-3xl bg-gray-50 border border-gray-100">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-gym-red">Tendência de Peso</h4>
-                    <TrendingUp className="w-4 h-4 text-gym-red" />
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-gray-900">Tendência de Peso</h4>
+                    <TrendingUp className="w-4 h-4 text-gray-900" />
                   </div>
                   <div className="h-24 flex items-end gap-2">
                     {selectedStudentForProgress.evaluations.map((ev, i) => (
                       <div 
                         key={i} 
-                        className="flex-1 bg-red-200 rounded-t-lg transition-all hover:bg-red-300"
+                        className="flex-1 bg-gray-200 rounded-t-lg transition-all hover:bg-gray-300"
                         style={{ height: `${(ev.weight / 150) * 100}%` }}
                       />
                     ))}

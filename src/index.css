@@ -1,12 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-gym-red: #A01A1A;
-  --color-gym-bg: #EAEAEA;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-gym-red: #000000; /* Changing red to black for the new minimalist theme */
+  --color-gym-bg: #F2F2F7;
   --color-gym-card: #FFFFFF;
-  --color-gym-text: #333333;
-  --color-gym-muted: #888888;
-  --color-gym-border: #E0E0E0;
+  --color-gym-text: #000000;
+  --color-gym-muted: #8E8E93;
+  --color-gym-border: #E5E5EA;
 }
 
 @layer base {
@@ -16,11 +18,11 @@
 }
 
 .glass-card {
-  @apply bg-gym-card border border-gym-border rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)];
+  @apply bg-gym-card border border-gym-border rounded-[32px] shadow-[0_4px_20px_rgba(0,0,0,0.03)];
 }
 
 .shadow-soft {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px_20px rgba(0, 0, 0, 0.03);
 }
 
 .shadow-inner-soft {

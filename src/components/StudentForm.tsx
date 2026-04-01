@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, Plus, Trash2, Dumbbell, Activity, Ruler, Camera, Brain, Sparkles, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
@@ -196,7 +196,7 @@ export default function StudentForm() {
         <button 
           onClick={handleSave}
           disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2 font-bold transition-all rounded-lg bg-gym-red text-white hover:bg-red-800 disabled:opacity-50 shadow-md shadow-red-500/20"
+          className="flex items-center gap-2 px-6 py-2 font-bold transition-all rounded-lg bg-black text-white hover:bg-gray-900 disabled:opacity-50 shadow-md shadow-black/20"
         >
           {isSaving ? (
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -214,7 +214,7 @@ export default function StudentForm() {
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all whitespace-nowrap ${
               activeTab === tab 
-                ? "bg-red-50 text-gym-red" 
+                ? "bg-gray-100 text-gray-900" 
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
             }`}
           >
@@ -236,14 +236,14 @@ export default function StudentForm() {
           <div className="grid gap-6 md:grid-cols-2">
             <div className="md:col-span-2 flex flex-col items-center mb-4">
               <div className="relative group">
-                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-red-50 bg-gray-100 flex items-center justify-center shadow-lg">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-100 bg-gray-100 flex items-center justify-center shadow-lg">
                   {student.photoUrl ? (
                     <img src={student.photoUrl} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     <Camera className="w-10 h-10 text-gray-300" />
                   )}
                 </div>
-                <label className="absolute bottom-0 right-0 p-2 bg-gym-red text-white rounded-full cursor-pointer shadow-md hover:bg-red-800 transition-all">
+                <label className="absolute bottom-0 right-0 p-2 bg-black text-white rounded-full cursor-pointer shadow-md hover:bg-gray-900 transition-all">
                   <Camera className="w-4 h-4" />
                   <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                 </label>
@@ -260,7 +260,7 @@ export default function StudentForm() {
                   setStudent(prev => ({ ...prev, name: (e.target as HTMLInputElement).value }));
                   setHasUnsavedChanges(true);
                 }}
-                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="space-y-2">
@@ -273,7 +273,7 @@ export default function StudentForm() {
                   setHasUnsavedChanges(true);
                 }}
                 placeholder="exemplo@email.com"
-                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="space-y-2">
@@ -285,7 +285,7 @@ export default function StudentForm() {
                   setStudent(prev => ({ ...prev, age: parseInt((e.target as HTMLInputElement).value) }));
                   setHasUnsavedChanges(true);
                 }}
-                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="space-y-2">
@@ -298,7 +298,7 @@ export default function StudentForm() {
                   setHasUnsavedChanges(true);
                 }}
                 placeholder="Ex: Hipertrofia e emagrecimento"
-                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="space-y-2">
@@ -310,7 +310,7 @@ export default function StudentForm() {
                   setStudent(prev => ({ ...prev, startDate: (e.target as HTMLInputElement).value }));
                   setHasUnsavedChanges(true);
                 }}
-                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
               />
             </div>
             <div className="md:col-span-2 space-y-2">
@@ -323,20 +323,20 @@ export default function StudentForm() {
                   setHasUnsavedChanges(true);
                 }}
                 placeholder="Ex: Ótima evolução este mês! Foca na execução do agachamento..."
-                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
               />
             </div>
 
             <div className="md:col-span-2 space-y-4 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-gym-red">
+                <div className="flex items-center gap-2 text-gray-900">
                   <Brain className="w-5 h-5" />
                   <h3 className="font-bold uppercase tracking-wider">Insights de Saúde (IA)</h3>
                 </div>
                 <button 
                   onClick={handleGenerateInsights}
                   disabled={isGeneratingInsights}
-                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold transition-all rounded-lg bg-red-50 text-gym-red hover:bg-red-100 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold transition-all rounded-lg bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:opacity-50"
                 >
                   {isGeneratingInsights ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   {isGeneratingInsights ? "Gerando..." : "Gerar com IA"}
@@ -364,7 +364,7 @@ export default function StudentForm() {
                   setHasUnsavedChanges(true);
                 }}
                 placeholder="Ex: Hidratação diária: 3,255L..."
-                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
               />
             </div>
           </div>
@@ -372,7 +372,7 @@ export default function StudentForm() {
 
         {activeTab === "physical" && (
           <div className="space-y-8">
-            <div className="flex items-center gap-2 text-gym-red">
+            <div className="flex items-center gap-2 text-gray-900">
               <Activity className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-wider">Avaliação Física</h3>
             </div>
@@ -398,7 +398,7 @@ export default function StudentForm() {
                       setHasUnsavedChanges(true);
                       setIsEvalModified(true);
                     }}
-                    className="w-full p-2 bg-white border border-gray-200 rounded-lg focus:border-gym-red focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 shadow-sm"
+                    className="w-full p-2 bg-white border border-gray-200 rounded-lg focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
                   />
                 </div>
               ))}
@@ -515,7 +515,7 @@ export default function StudentForm() {
               <h3 className="text-xl font-bold tracking-tight text-gray-900">Histórico de Aulas</h3>
               <button 
                 onClick={() => navigate("/admin", { state: { openCalendarForStudent: student.id } })}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all rounded-lg bg-gym-red text-white hover:bg-red-800 shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all rounded-lg bg-black text-white hover:bg-gray-900 shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 Agendar Aula
