@@ -83,6 +83,18 @@ export interface CompletedWorkout {
   sessionId?: string; // Link to ClassSession if applicable
 }
 
+export interface ActiveWorkoutProgress {
+  studentId: string;
+  workoutId: string;
+  workoutName: string;
+  startedAt: string;
+  lastUpdated: string;
+  completedExercises: string[];
+  difficulties: string;
+  personalObservations: string;
+  status: 'in-progress';
+}
+
 export interface Student {
   id: string;
   adminId: string; // This is the UID of the Personal Trainer (Admin)

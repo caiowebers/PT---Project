@@ -24,8 +24,9 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
-import { Student, ClassSession, Exercise, AdminSettings, CompletedWorkout, Workout } from "../types";
+import { Student, ClassSession, Exercise, AdminSettings, CompletedWorkout, Workout, ActiveWorkoutProgress } from "../types";
 import { storageService } from "../services/storageService";
+import { progressService } from "../services/progressService";
 import { v4 as uuidv4 } from "uuid";
 import { wgerService } from "../services/wgerService";
 import { format, parseISO, addHours, startOfWeek, endOfWeek, isSameWeek, isPast, isToday, isSameDay } from "date-fns";
@@ -68,12 +69,39 @@ export default function ClientView() {
     notes: ""
   });
   const [isRequesting, setIsRequesting] = useState(false);
+  const [activeProgressMap, setActiveProgressMap] = useState<Record<string, ActiveWorkoutProgress>>({});
   
   useEffect(() => {
     // Expand current week by default
     const currentWeekKey = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
     setExpandedWeeks({ [currentWeekKey]: true });
   }, []);
+
+  useEffect(() => {
+    if (student) {
+      const unsubscribe = progressService.subscribeToAllActiveProgress(student.id, (progressList) => {
+        const map: Record<string, ActiveWorkoutProgress> = {};
+        const newCompleted: Record<string, boolean> = { ...completedExercises };
+        const newDiffs: Record<string, string> = { ...difficulties };
+        const newObs: Record<string, string> = { ...personalObservations };
+
+        progressList.forEach(p => {
+          map[p.workoutId] = p;
+          p.completedExercises.forEach(id => {
+            newCompleted[id] = true;
+          });
+          newDiffs[p.workoutId] = p.difficulties;
+          newObs[p.workoutId] = p.personalObservations;
+        });
+
+        setActiveProgressMap(map);
+        setCompletedExercises(newCompleted);
+        setDifficulties(newDiffs);
+        setPersonalObservations(newObs);
+      });
+      return () => unsubscribe();
+    }
+  }, [student?.id]);
 
   useEffect(() => {
     let unsubscribeSessions: (() => void) | null = null;
@@ -131,11 +159,67 @@ export default function ClientView() {
     }
   };
 
-  const toggleExercise = (exerciseId: string) => {
-    setCompletedExercises(prev => ({
-      ...prev,
-      [exerciseId]: !prev[exerciseId]
-    }));
+  const toggleExercise = async (exerciseId: string, workoutId: string, workoutName: string) => {
+    if (!student) return;
+
+    const isNowCompleted = !completedExercises[exerciseId];
+    const newCompleted = {
+      ...completedExercises,
+      [exerciseId]: isNowCompleted
+    };
+    
+    setCompletedExercises(newCompleted);
+
+    // Persist progress
+    const currentProgress = activeProgressMap[workoutId] || {
+      studentId: student.id,
+      workoutId: workoutId,
+      workoutName: workoutName,
+      startedAt: new Date().toISOString(),
+      completedExercises: [],
+      difficulties: difficulties[workoutId] || "",
+      personalObservations: personalObservations[workoutId] || "",
+      status: 'in-progress'
+    };
+
+    const updatedCompleted = isNowCompleted 
+      ? [...currentProgress.completedExercises, exerciseId]
+      : currentProgress.completedExercises.filter(id => id !== exerciseId);
+
+    await progressService.saveProgress({
+      ...currentProgress,
+      completedExercises: updatedCompleted,
+      lastUpdated: new Date().toISOString()
+    });
+  };
+
+  const handleNoteChange = async (workoutId: string, workoutName: string, field: 'difficulties' | 'personalObservations', value: string) => {
+    if (!student) return;
+
+    if (field === 'difficulties') {
+      setDifficulties(prev => ({ ...prev, [workoutId]: value }));
+    } else {
+      setPersonalObservations(prev => ({ ...prev, [workoutId]: value }));
+    }
+
+    const currentProgress = activeProgressMap[workoutId] || {
+      studentId: student.id,
+      workoutId: workoutId,
+      workoutName: workoutName,
+      startedAt: new Date().toISOString(),
+      completedExercises: Object.entries(completedExercises)
+        .filter(([id, completed]) => completed)
+        .map(([id]) => id),
+      difficulties: difficulties[workoutId] || "",
+      personalObservations: personalObservations[workoutId] || "",
+      status: 'in-progress'
+    };
+
+    await progressService.saveProgress({
+      ...currentProgress,
+      [field]: value,
+      lastUpdated: new Date().toISOString()
+    });
   };
 
   const groupSessionsByWeek = (sessions: ClassSession[]) => {
@@ -196,6 +280,9 @@ export default function ClientView() {
       if (sessionId) {
         await storageService.updateSessionStatus(sessionId, 'completed');
       }
+
+      // Clear active progress from subcollection
+      await progressService.clearProgress(student.id, sessionId || workout.id);
 
       // Clear states for this specific workout/session
       const key = sessionId || workout.id;
@@ -511,7 +598,7 @@ export default function ClientView() {
                                 <div key={exercise.id} className="p-4 rounded-2xl bg-gray-50 space-y-3">
                                   <div className="flex items-center gap-4">
                                     <button 
-                                      onClick={() => toggleExercise(exercise.id)}
+                                      onClick={() => toggleExercise(exercise.id, workout.id, workout.name)}
                                       className={`w-10 h-10 rounded-xl shadow-sm flex items-center justify-center font-bold flex-shrink-0 transition-all ${completedExercises[exercise.id] ? 'bg-green-500 text-white' : 'bg-white text-gray-400'}`}
                                     >
                                       {completedExercises[exercise.id] ? <Check className="w-5 h-5" /> : index + 1}
@@ -558,7 +645,7 @@ export default function ClientView() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Dificuldades / O que pulou</label>
                                 <textarea 
                                   value={difficulties[workout.id] || ""}
-                                  onChange={(e) => setDifficulties(prev => ({ ...prev, [workout.id]: e.target.value }))}
+                                  onChange={(e) => handleNoteChange(workout.id, workout.name, 'difficulties', e.target.value)}
                                   placeholder="Ex: Pulei o último exercício por falta de tempo..."
                                   className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[60px]"
                                 />
@@ -567,7 +654,7 @@ export default function ClientView() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Observações Pessoais</label>
                                 <textarea 
                                   value={personalObservations[workout.id] || ""}
-                                  onChange={(e) => setPersonalObservations(prev => ({ ...prev, [workout.id]: e.target.value }))}
+                                  onChange={(e) => handleNoteChange(workout.id, workout.name, 'personalObservations', e.target.value)}
                                   placeholder="Ex: Senti um pouco de dor no ombro..."
                                   className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[60px]"
                                 />
@@ -681,7 +768,7 @@ export default function ClientView() {
                                                 <div key={exercise.id} className="p-4 rounded-2xl bg-gray-50 space-y-3">
                                                   <div className="flex items-center gap-4">
                                                     <button 
-                                                      onClick={() => toggleExercise(exercise.id)}
+                                                      onClick={() => toggleExercise(exercise.id, session.id, session.workoutTitle)}
                                                       className={`w-10 h-10 rounded-xl shadow-sm flex items-center justify-center font-bold flex-shrink-0 transition-all ${completedExercises[exercise.id] ? 'bg-green-500 text-white' : 'bg-white text-gray-400'}`}
                                                     >
                                                       {completedExercises[exercise.id] ? <Check className="w-5 h-5" /> : index + 1}
@@ -728,7 +815,7 @@ export default function ClientView() {
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Dificuldades / O que pulou</label>
                                                 <textarea 
                                                   value={difficulties[session.id] || ""}
-                                                  onChange={(e) => setDifficulties(prev => ({ ...prev, [session.id]: e.target.value }))}
+                                                  onChange={(e) => handleNoteChange(session.id, session.workoutTitle, 'difficulties', e.target.value)}
                                                   placeholder="Ex: Pulei o último exercício por falta de tempo..."
                                                   className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[60px]"
                                                 />
@@ -737,7 +824,7 @@ export default function ClientView() {
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Observações Pessoais</label>
                                                 <textarea 
                                                   value={personalObservations[session.id] || ""}
-                                                  onChange={(e) => setPersonalObservations(prev => ({ ...prev, [session.id]: e.target.value }))}
+                                                  onChange={(e) => handleNoteChange(session.id, session.workoutTitle, 'personalObservations', e.target.value)}
                                                   placeholder="Ex: Senti um pouco de dor no ombro..."
                                                   className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[60px]"
                                                 />

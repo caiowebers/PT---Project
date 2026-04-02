@@ -7,8 +7,9 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from "sonner";
 import StudentForm from "./StudentForm";
-import { Student, Workout, AdminSettings, ExerciseLibraryItem } from "../types";
+import { Student, Workout, AdminSettings, ExerciseLibraryItem, ActiveWorkoutProgress } from "../types";
 import { storageService } from "../services/storageService";
+import { progressService } from "../services/progressService";
 import { auth, onAuthStateChanged } from "../firebase";
 import WorkoutEditor from "./WorkoutEditor";
 import CalendarView from "./CalendarView";
@@ -25,7 +26,9 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedStudentForProgress, setSelectedStudentForProgress] = useState<Student | null>(null);
-  const [progressTab, setProgressTab] = useState<"metrics" | "history" | "evaluations">("metrics");
+  const [activeProgress, setActiveProgress] = useState<ActiveWorkoutProgress[]>([]);
+  const [globalActiveProgress, setGlobalActiveProgress] = useState<ActiveWorkoutProgress[]>([]);
+  const [progressTab, setProgressTab] = useState<"metrics" | "history" | "evaluations" | "active">("metrics");
   const [activeTab, setActiveTab] = useState<"students" | "workouts" | "agenda" | "settings">("students");
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
@@ -61,6 +64,28 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       unsubscribeStudents();
     };
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = progressService.subscribeToGlobalActiveProgress((data) => {
+      setGlobalActiveProgress(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (selectedStudentForProgress) {
+      const unsubscribe = progressService.subscribeToAllActiveProgress(selectedStudentForProgress.id, (data) => {
+        setActiveProgress(data);
+        if (data.length > 0 && progressTab !== "active") {
+          // Optional: automatically switch to active tab if there is progress?
+          // For now, just let the user know.
+        }
+      });
+      return () => unsubscribe();
+    } else {
+      setActiveProgress([]);
+    }
+  }, [selectedStudentForProgress?.id]);
 
   const isFirebaseAuthed = !!currentUser;
 
@@ -280,6 +305,12 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 tracking-tight">{student.name}</h3>
+                              {globalActiveProgress.some(p => p.studentId === student.id) && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                                  <Activity className="w-3 h-3" />
+                                  Treinando
+                                </span>
+                              )}
                               <Fingerprint className="w-4 h-4 text-gray-300" />
                             </div>
                             <p className="text-sm font-medium text-gray-500 mt-0.5">{student.goal}</p>
@@ -636,10 +667,82 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 >
                   Avaliações
                 </button>
+                <button 
+                  onClick={() => setProgressTab("active")}
+                  className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${progressTab === 'active' ? 'border-gym-red text-gym-red' : 'border-transparent text-gray-400 hover:text-gray-600'} flex items-center gap-2`}
+                >
+                  Em Andamento
+                  {activeProgress.length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  )}
+                </button>
               </div>
 
               <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                {progressTab === "metrics" ? (
+                {progressTab === "active" ? (
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-gym-red" />
+                      Treinos em Tempo Real
+                    </h3>
+                    {activeProgress.length === 0 ? (
+                      <div className="p-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                        <p className="text-gray-400 font-medium">Nenhum treino sendo realizado no momento.</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-6">
+                        {activeProgress.map((progress) => {
+                          const workout = selectedStudentForProgress.workouts.find(w => w.id === progress.workoutId);
+                          const totalExercises = workout?.exercises.length || 0;
+                          const percentage = totalExercises > 0 ? Math.round((progress.completedExercises.length / totalExercises) * 100) : 0;
+
+                          return (
+                            <div key={progress.workoutId} className="p-6 rounded-3xl bg-white border border-gray-100 shadow-sm space-y-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-bold text-gray-900 text-lg">{progress.workoutName}</h4>
+                                  <p className="text-xs text-gray-500">Iniciado em: {format(parseISO(progress.startedAt), "HH:mm 'de' dd/MM/yyyy")}</p>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                  <span className="px-3 py-1 rounded-full bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                                    Em Andamento
+                                  </span>
+                                  <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Última atualização: {format(parseISO(progress.lastUpdated), "HH:mm:ss")}</p>
+                                </div>
+                              </div>
+
+                              {/* Progress Bar */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-gray-400">
+                                  <span>Exercícios Concluídos</span>
+                                  <span>{progress.completedExercises.length} / {totalExercises} exercícios</span>
+                                </div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-gym-red transition-all duration-500"
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Notes */}
+                              <div className="grid md:grid-cols-2 gap-4">
+                                <div className="p-4 rounded-2xl bg-gray-50 space-y-2">
+                                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dificuldades</p>
+                                  <p className="text-sm text-gray-700 italic">{progress.difficulties || "Nenhuma observação..."}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-gray-50 space-y-2">
+                                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Observações Pessoais</p>
+                                  <p className="text-sm text-gray-700 italic">{progress.personalObservations || "Nenhuma observação..."}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : progressTab === "metrics" ? (
                   <>
                     {/* Metrics Summary */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
