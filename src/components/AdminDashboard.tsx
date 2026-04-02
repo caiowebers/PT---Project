@@ -8,6 +8,57 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from "sonner";
 import StudentForm from "./StudentForm";
 import { Student, Workout, AdminSettings, ExerciseLibraryItem, ActiveWorkoutProgress } from "../types";
+
+const DEFAULT_EXERCISES: ExerciseLibraryItem[] = [
+  // Inferiores e bíceps
+  { id: "def-1", name: "Agachamento Goblet", category: "Inferiores", muscleGroup: "Quadríceps" },
+  { id: "def-2", name: "Passada (halteres ou kettlebell)", category: "Inferiores", muscleGroup: "Pernas" },
+  { id: "def-3", name: "Stiff", category: "Inferiores", muscleGroup: "Posteriores" },
+  { id: "def-4", name: "Cadeira flexora", category: "Inferiores", muscleGroup: "Posteriores" },
+  { id: "def-5", name: "Cadeira extensora", category: "Inferiores", muscleGroup: "Quadríceps" },
+  { id: "def-6", name: "Panturrilhas em pé", category: "Inferiores", muscleGroup: "Panturrilhas" },
+  { id: "def-7", name: "Panturrilhas sentado", category: "Inferiores", muscleGroup: "Panturrilhas" },
+  { id: "def-8", name: "Rosca alternada com halteres", category: "Bíceps", muscleGroup: "Bíceps" },
+  { id: "def-9", name: "Rosca pegada próxima (barra W)", category: "Bíceps", muscleGroup: "Bíceps" },
+  
+  // Peito, ombro e tríceps
+  { id: "def-10", name: "Supino reto com barra", category: "Peito", muscleGroup: "Peitoral" },
+  { id: "def-11", name: "Supino inclinado", category: "Peito", muscleGroup: "Peitoral Superior" },
+  { id: "def-12", name: "Face Pull", category: "Ombros", muscleGroup: "Deltoide Posterior" },
+  { id: "def-13", name: "Elevação lateral", category: "Ombros", muscleGroup: "Deltoide Lateral" },
+  { id: "def-14", name: "Crucifixo", category: "Peito", muscleGroup: "Peitoral" },
+  { id: "def-15", name: "Encolhimento (tronco levemente inclinado)", category: "Ombros", muscleGroup: "Trapézio" },
+  { id: "def-16", name: "Tríceps testa", category: "Tríceps", muscleGroup: "Tríceps" },
+  { id: "def-17", name: "Tríceps polia pronada", category: "Tríceps", muscleGroup: "Tríceps" },
+  { id: "def-18", name: "Manguito rotador", category: "Ombros", muscleGroup: "Manguito" },
+  
+  // Costas e inferiores
+  { id: "def-19", name: "Levantamento terra", category: "Costas/Inferiores", muscleGroup: "Cadeia Posterior" },
+  { id: "def-20", name: "Hip Thrust", category: "Inferiores", muscleGroup: "Glúteos" },
+  { id: "def-21", name: "Remada serrote", category: "Costas", muscleGroup: "Dorsais" },
+  { id: "def-22", name: "Leg press 45° (bilateral + unilateral)", category: "Inferiores", muscleGroup: "Pernas" },
+  { id: "def-23", name: "Extensão de tronco", category: "Costas", muscleGroup: "Lombar" },
+  { id: "def-24", name: "Crucifixo invertido", category: "Ombros", muscleGroup: "Deltoide Posterior" },
+  
+  // Abdominais e core
+  { id: "def-25", name: "Total abdominal (máquina)", category: "Core", muscleGroup: "Abdômen" },
+  { id: "def-26", name: "Prancha", category: "Core", muscleGroup: "Abdômen" },
+  { id: "def-27", name: "Prancha inversa", category: "Core", muscleGroup: "Core" },
+  { id: "def-28", name: "Prancha lateral", category: "Core", muscleGroup: "Oblíquos" },
+  { id: "def-29", name: "Russian twist", category: "Core", muscleGroup: "Oblíquos" },
+  { id: "def-30", name: "Leg raise", category: "Core", muscleGroup: "Abdômen Inferior" },
+  { id: "def-31", name: "Dead bug", category: "Core", muscleGroup: "Core" },
+  { id: "def-32", name: "Oblíquos", category: "Core", muscleGroup: "Oblíquos" },
+  
+  // Alongamentos
+  { id: "def-33", name: "Quadríceps em pé", category: "Alongamento", muscleGroup: "Quadríceps" },
+  { id: "def-34", name: "Posterior da coxa", category: "Alongamento", muscleGroup: "Posteriores" },
+  { id: "def-35", name: "Glúteo (figura 4)", category: "Alongamento", muscleGroup: "Glúteos" },
+  { id: "def-36", name: "Flexor de quadril", category: "Alongamento", muscleGroup: "Flexores" },
+  { id: "def-37", name: "Peitoral na parede", category: "Alongamento", muscleGroup: "Peitoral" },
+  { id: "def-38", name: "Ombros", category: "Alongamento", muscleGroup: "Ombros" },
+  { id: "def-39", name: "Pose da cobra", category: "Alongamento", muscleGroup: "Core/Costas" },
+];
 import { storageService } from "../services/storageService";
 import { progressService } from "../services/progressService";
 import { auth, onAuthStateChanged } from "../firebase";
@@ -48,9 +99,17 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       if (user) {
         const settings = await storageService.getAdminSettings(user.uid);
         if (settings) {
+          // Initialize with default exercises if library is empty
+          if (!settings.exerciseLibrary || settings.exerciseLibrary.length === 0) {
+            settings.exerciseLibrary = DEFAULT_EXERCISES;
+            // Auto-save to persist the default exercises
+            await storageService.saveAdminSettings(settings);
+          }
           setAdminSettings(settings);
         } else {
-          setAdminSettings({ id: user.uid });
+          const newSettings = { id: user.uid, exerciseLibrary: DEFAULT_EXERCISES };
+          await storageService.saveAdminSettings(newSettings);
+          setAdminSettings(newSettings);
         }
       }
     });
@@ -507,10 +566,43 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                         <TrendingUp className="w-5 h-5 text-gray-900" />
                         Biblioteca de Exercícios
                       </h3>
+                      <button
+                        onClick={async () => {
+                          let newSettings: AdminSettings | null = null;
+                          setAdminSettings(prev => {
+                            const currentLibrary = prev?.exerciseLibrary || [];
+                            // Add only exercises that don't already exist by name
+                            const newExercises = DEFAULT_EXERCISES.filter(
+                              defEx => !currentLibrary.some(ex => ex.name.toLowerCase() === defEx.name.toLowerCase())
+                            );
+                            
+                            if (newExercises.length === 0) {
+                              toast.info("Todos os exercícios padrão já estão na biblioteca.");
+                              return prev;
+                            }
+                            
+                            toast.success(`${newExercises.length} exercícios padrão adicionados!`);
+                            newSettings = prev ? 
+                              { ...prev, exerciseLibrary: [...currentLibrary, ...newExercises] } : 
+                              { id: currentUser?.uid || "anonymous", exerciseLibrary: newExercises };
+                            return newSettings;
+                          });
+                          
+                          // Small delay to allow state to update, though we use the local variable
+                          setTimeout(async () => {
+                            if (newSettings) {
+                              await storageService.saveAdminSettings(newSettings);
+                            }
+                          }, 100);
+                        }}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Carregar Padrões
+                      </button>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                      <div className="space-y-2 md:col-span-5">
                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Novo Exercício</label>
                         <input 
                           id="new-exercise-name"
@@ -519,20 +611,23 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                           className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 md:col-span-3">
                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Área do Corpo</label>
-                        <div className="flex gap-2">
-                          <input 
-                            id="new-exercise-category"
-                            type="text"
-                            placeholder="Ex: Peito"
-                            className="flex-1 p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
-                          />
+                        <input 
+                          id="new-exercise-category"
+                          type="text"
+                          placeholder="Ex: Peito"
+                          className="w-full p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Músculo Alvo</label>
+                        <div className="flex gap-2 h-[46px]">
                           <input 
                             id="new-exercise-muscle"
                             type="text"
                             placeholder="Ex: Peitoral Maior"
-                            className="flex-1 p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
+                            className="flex-1 min-w-0 p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm h-full"
                           />
                           <button 
                             onClick={() => {
@@ -548,7 +643,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                                 };
                                 setAdminSettings(prev => {
                                   const library = prev?.exerciseLibrary || [];
-                                  return prev ? ({ ...prev, exerciseLibrary: [...library, newItem] }) : ({ id: currentUser?.uid, exerciseLibrary: [newItem] });
+                                  return prev ? ({ ...prev, exerciseLibrary: [...library, newItem] }) : ({ id: currentUser?.uid || "anonymous", exerciseLibrary: [newItem] });
                                 });
                                 nameInput.value = '';
                                 categoryInput.value = '';
@@ -556,7 +651,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                                 toast.success("Exercício adicionado à biblioteca!");
                               }
                             }}
-                            className="px-4 bg-black text-white rounded-xl hover:bg-gray-900 transition-all font-bold"
+                            className="px-4 py-3 bg-black text-white rounded-xl hover:bg-gray-900 transition-all font-bold h-full flex items-center justify-center shrink-0"
                           >
                             Add
                           </button>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, GripVertical, Image as ImageIcon, Search, Loader2, Copy, X, ChevronRight, Clock, BarChart3, Zap, Eye } from "lucide-react";
+import { Plus, Trash2, GripVertical, Image as ImageIcon, Search, Loader2, Copy, X, ChevronRight, Clock, BarChart3, Eye } from "lucide-react";
 import { Exercise, Workout, ExerciseLibraryItem } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { wgerService, WgerExercise } from "../services/wgerService";
@@ -446,34 +446,6 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     handleWorkoutUpdate({ ...workout, exercises: workout.exercises.filter(e => e.id !== id) });
   };
 
-  const optimizeWorkout = async () => {
-    const toastId = toast.loading("Otimizando treino com IA...");
-    try {
-      const optimizedExercises = await wgerService.optimizeWorkout(workout);
-      
-      // Ensure all exercises have at least one set
-      const validatedExercises = optimizedExercises.map(ex => {
-        if (!ex.sets || ex.sets.length === 0) {
-          return {
-            ...ex,
-            sets: [{ id: uuidv4(), reps: "12", load: "0" }],
-            reps: "1 set"
-          };
-        }
-        return ex;
-      });
-
-      handleWorkoutUpdate({ ...workout, exercises: validatedExercises });
-      toast.success("Treino otimizado com sucesso!", {
-        id: toastId,
-        description: "Sequência otimizada por IA e séries validadas."
-      });
-    } catch (error) {
-      console.error("Optimization error:", error);
-      toast.error("Erro ao otimizar treino.", { id: toastId });
-    }
-  };
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -729,14 +701,6 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                   ))}
                 </div>
               </div>
-
-              <button 
-                onClick={optimizeWorkout}
-                className="w-full py-4 bg-gym-red text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md shadow-red-500/20 mt-4"
-              >
-                <Zap className="w-4 h-4" />
-                Otimizar Treino
-              </button>
             </div>
           </div>
         </div>
