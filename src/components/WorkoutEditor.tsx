@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, GripVertical, Image as ImageIcon, Search, Loader2, Copy, X, ChevronRight, Clock, BarChart3, Zap, Eye } from "lucide-react";
-import { Exercise, Workout } from "../types";
+import { Exercise, Workout, ExerciseLibraryItem } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { wgerService, WgerExercise } from "../services/wgerService";
 import { motion, AnimatePresence } from "motion/react";
@@ -27,6 +27,7 @@ interface WorkoutEditorProps {
   workout: Workout;
   onUpdate: (workout: Workout) => void;
   accentColor?: string;
+  exerciseLibrary?: ExerciseLibraryItem[];
 }
 
 function SortableExerciseItem({ 
@@ -35,20 +36,16 @@ function SortableExerciseItem({
   searchTerms, 
   suggestions, 
   loading, 
-  selectedMuscle, 
-  muscles, 
   handleSearch, 
   selectSuggestion, 
   updateExercise, 
   duplicateExercise, 
   removeExercise, 
   categories,
-  repPresets,
-  restPresets,
   setSearchTerms,
-  setSuggestions,
   isHighlighted,
-  accentColor
+  accentColor,
+  exerciseLibrary
 }: any) {
   const [showInfo, setShowInfo] = useState(false);
   const {
@@ -141,21 +138,15 @@ function SortableExerciseItem({
             <input 
               type="text" 
               value={searchTerms[exercise.id] || ""}
-              onChange={e => setSearchTerms(prev => ({ ...prev, [exercise.id]: (e.target as HTMLInputElement).value }))}
-              onKeyDown={e => e.key === 'Enter' && handleSearch(exercise.id, searchTerms[exercise.id] || "", undefined, true)}
-              placeholder="Refinar exercício com IA..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-9 pr-10 focus:ring-1 focus:ring-red-500/20 focus:border-gym-red text-xs text-gray-700 transition-all"
+              onChange={e => {
+                const term = (e.target as HTMLInputElement).value;
+                setSearchTerms(prev => ({ ...prev, [exercise.id]: term }));
+                handleSearch(exercise.id, term);
+              }}
+              placeholder="Pesquisar exercício na biblioteca..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-9 pr-10 focus:ring-1 focus:ring-black/5 focus:border-black text-xs text-gray-700 transition-all"
             />
-            {loading[exercise.id] && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gym-red animate-spin" />
-            )}
           </div>
-          <button 
-            onClick={() => handleSearch(exercise.id, searchTerms[exercise.id] || "", undefined, true)}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all"
-          >
-            Buscar
-          </button>
         </div>
 
         {/* Suggestions Dropdown */}
@@ -167,7 +158,7 @@ function SortableExerciseItem({
               exit={{ opacity: 0, y: 5 }}
               className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-60 overflow-y-auto overflow-x-hidden"
             >
-              {suggestions[exercise.id].map((s: any) => (
+              {suggestions[exercise.id].map((s: ExerciseLibraryItem) => (
                 <button
                   key={s.id}
                   onClick={() => selectSuggestion(exercise.id, s)}
@@ -175,9 +166,9 @@ function SortableExerciseItem({
                 >
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-bold text-gray-900 truncate">{s.name}</div>
-                    <div className="text-[9px] text-gray-500 uppercase font-bold">{s.category} • {s.primaryMuscles[0]}</div>
+                    <div className="text-[9px] text-gray-500 uppercase font-bold">{s.category}</div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover/item:text-gym-red transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover/item:text-black transition-colors" />
                 </button>
               ))}
             </motion.div>
@@ -308,18 +299,15 @@ function SortableExerciseItem({
   );
 }
 
-export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--gym-red)" }: WorkoutEditorProps) {
+export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--gym-red)", exerciseLibrary = [] }: WorkoutEditorProps) {
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
-  const [suggestions, setSuggestions] = useState<Record<string, WgerExercise[]>>({});
+  const [suggestions, setSuggestions] = useState<Record<string, ExerciseLibraryItem[]>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
-  const [selectedMuscle, setSelectedMuscle] = useState<Record<string, string>>({});
-  const [muscles, setMuscles] = useState<string[]>([]);
-  const [libraryMuscle, setLibraryMuscle] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   
   const [globalSearchTerm, setGlobalSearchTerm] = useState("");
-  const [globalSuggestions, setGlobalSuggestions] = useState<WgerExercise[]>([]);
-  const [globalLoading, setGlobalLoading] = useState(false);
+  const [globalSuggestions, setGlobalSuggestions] = useState<ExerciseLibraryItem[]>([]);
+  const [libraryMuscle, setLibraryMuscle] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -328,9 +316,10 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     })
   );
 
-  useEffect(() => {
-    wgerService.getMuscles().then(setMuscles);
-  }, []);
+  const muscles = useMemo(() => {
+    const categories = exerciseLibrary.map(ex => ex.category);
+    return Array.from(new Set(categories)).sort();
+  }, [exerciseLibrary]);
 
   useEffect(() => {
     if (highlightedId) {
@@ -339,21 +328,18 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     }
   }, [highlightedId]);
 
-  const handleGlobalSearch = async (term: string) => {
+  const handleGlobalSearch = (term: string) => {
     setGlobalSearchTerm(term);
-    if (term.length < 2) {
+    if (term.length < 1) {
       setGlobalSuggestions([]);
       return;
     }
-    setGlobalLoading(true);
-    try {
-      const results = await wgerService.searchExercises(term);
-      setGlobalSuggestions(results);
-    } catch (error) {
-      setGlobalSuggestions([]);
-    } finally {
-      setGlobalLoading(false);
-    }
+    
+    const filtered = exerciseLibrary.filter(ex => 
+      ex.name.toLowerCase().includes(term.toLowerCase()) ||
+      ex.category.toLowerCase().includes(term.toLowerCase())
+    );
+    setGlobalSuggestions(filtered);
   };
 
   const handleWorkoutUpdate = (updatedWorkout: Workout) => {
@@ -386,7 +372,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
       // Set search term for the new item so it shows up
       setSearchTerms(prev => ({ ...prev, [newId]: exerciseName }));
       // Trigger search to get description
-      handleSearch(newId, exerciseName, undefined, true);
+      handleSearch(newId, exerciseName);
     }
   };
 
@@ -480,36 +466,20 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     }
   };
 
-  const handleSearch = async (id: string, term: string, muscle?: string, force: boolean = false) => {
-    const currentTerm = term !== undefined ? term : (searchTerms[id] || "");
-    const currentMuscle = muscle !== undefined ? muscle : (selectedMuscle[id] || "");
-    
-    setSearchTerms(prev => ({ ...prev, [id]: currentTerm }));
-    setSelectedMuscle(prev => ({ ...prev, [id]: currentMuscle }));
-    
-    // Only search automatically if it's a muscle filter change, 
-    // otherwise wait for the search button or Enter key
-    if (!force && !muscle) return;
-
-    if (currentTerm.length < 2 && !currentMuscle) {
+  const handleSearch = (id: string, term: string) => {
+    if (term.length < 1) {
       setSuggestions(prev => ({ ...prev, [id]: [] }));
       return;
     }
 
-    setLoading(prev => ({ ...prev, [id]: true }));
-    
-    try {
-      const results = await wgerService.searchExercises(currentTerm, currentMuscle);
-      setSuggestions(prev => ({ ...prev, [id]: results }));
-    } catch (error) {
-      console.error("Search error:", error);
-      setSuggestions(prev => ({ ...prev, [id]: [] }));
-    } finally {
-      setLoading(prev => ({ ...prev, [id]: false }));
-    }
+    const filtered = exerciseLibrary.filter(ex => 
+      ex.name.toLowerCase().includes(term.toLowerCase()) ||
+      ex.category.toLowerCase().includes(term.toLowerCase())
+    );
+    setSuggestions(prev => ({ ...prev, [id]: filtered }));
   };
 
-  const selectSuggestion = (id: string, suggestion: WgerExercise) => {
+  const selectSuggestion = (id: string, suggestion: ExerciseLibraryItem) => {
     updateExercise(id, { 
       name: suggestion.name, 
       description: suggestion.description
@@ -559,20 +529,15 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                 placeholder="Pesquisar na biblioteca de exercícios..."
                 value={globalSearchTerm}
                 onChange={e => handleGlobalSearch((e.target as HTMLInputElement).value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-red-500/20 focus:border-gym-red font-bold text-xs text-gray-900 transition-all placeholder:text-gray-500"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-12 pr-4 focus:ring-1 focus:ring-black/5 focus:border-black font-bold text-xs text-gray-900 transition-all placeholder:text-gray-500"
                 onKeyDown={e => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'Enter' && globalSearchTerm) {
                     addExercise(globalSearchTerm);
                     setGlobalSearchTerm("");
                     setGlobalSuggestions([]);
                   }
                 }}
               />
-              {globalLoading && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <Loader2 className="w-4 h-4 text-gym-red animate-spin" />
-                </div>
-              )}
               
               <AnimatePresence>
                 {globalSuggestions.length > 0 && (
@@ -593,10 +558,10 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                         className="w-full p-4 text-left hover:bg-gray-50 flex items-center justify-between group transition-all"
                       >
                         <div>
-                          <p className="text-xs font-bold text-gray-900 group-hover:text-gym-red transition-colors">{suggestion.name}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{suggestion.description}</p>
+                          <p className="text-xs font-bold text-gray-900 group-hover:text-black transition-colors">{suggestion.name}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{suggestion.category}</p>
                         </div>
-                        <Plus className="w-4 h-4 text-gray-300 group-hover:text-gym-red" />
+                        <Plus className="w-4 h-4 text-gray-300 group-hover:text-black" />
                       </button>
                     ))}
                   </motion.div>
@@ -605,13 +570,13 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
             </div>
             
             <div className="flex gap-1 overflow-x-auto no-scrollbar w-full md:w-auto">
-              {muscles.slice(0, 6).map(m => (
+              {muscles.map(m => (
                 <button
                   key={m}
                   onClick={() => setLibraryMuscle(libraryMuscle === m ? null : m)}
                   className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border ${
                     libraryMuscle === m 
-                      ? 'bg-gym-red text-white border-gym-red shadow-sm' 
+                      ? 'bg-black text-white border-black shadow-sm' 
                       : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
@@ -624,13 +589,13 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
           {/* Compact Suggestions Row */}
           {libraryMuscle && (
             <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
-              {wgerService.getPopularExercises(libraryMuscle).map(exName => (
+              {exerciseLibrary.filter(ex => ex.category === libraryMuscle).map(ex => (
                 <button
-                  key={exName}
-                  onClick={() => addExercise(exName)}
+                  key={ex.id}
+                  onClick={() => addExercise(ex.name)}
                   className="px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-[10px] font-bold text-gray-700 transition-all whitespace-nowrap"
                 >
-                  {exName} +
+                  {ex.name} +
                 </button>
               ))}
             </div>
@@ -655,20 +620,16 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                   searchTerms={searchTerms}
                   suggestions={suggestions}
                   loading={loading}
-                  selectedMuscle={selectedMuscle}
-                  muscles={muscles}
                   handleSearch={handleSearch}
                   selectSuggestion={selectSuggestion}
                   updateExercise={updateExercise}
                   duplicateExercise={duplicateExercise}
                   removeExercise={removeExercise}
                   categories={categories}
-                  repPresets={repPresets}
-                  restPresets={restPresets}
                   setSearchTerms={setSearchTerms}
-                  setSuggestions={setSuggestions}
                   isHighlighted={exercise.id === highlightedId}
                   accentColor={accentColor}
+                  exerciseLibrary={exerciseLibrary}
                 />
               ))}
             </div>

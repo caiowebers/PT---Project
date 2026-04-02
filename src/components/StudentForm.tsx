@@ -4,7 +4,7 @@ import { ArrowLeft, Save, Plus, Trash2, Dumbbell, Activity, Ruler, Camera, Brain
 import { motion } from "motion/react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
-import { Student, Workout, Exercise, PhysicalEvaluation, BodyMeasurements, ClassSession } from "../types";
+import { Student, Workout, Exercise, PhysicalEvaluation, BodyMeasurements, ClassSession, ExerciseLibraryItem } from "../types";
 import WorkoutEditor from "./WorkoutEditor";
 import { storageService } from "../services/storageService";
 import { wgerService } from "../services/wgerService";
@@ -32,6 +32,7 @@ export default function StudentForm() {
   const [currentEval, setCurrentEval] = useState<Partial<PhysicalEvaluation>>({});
   const [currentMeas, setCurrentMeas] = useState<Partial<BodyMeasurements>>({});
   const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [exerciseLibrary, setExerciseLibrary] = useState<ExerciseLibraryItem[]>([]);
 
   const [isEvalModified, setIsEvalModified] = useState(false);
   const [isMeasModified, setIsMeasModified] = useState(false);
@@ -48,6 +49,17 @@ export default function StudentForm() {
       }
     };
     fetchStudent();
+
+    const fetchSettings = async () => {
+      const user = storageService.getCurrentUserId();
+      if (user) {
+        const settings = await storageService.getAdminSettings(user);
+        if (settings?.exerciseLibrary) {
+          setExerciseLibrary(settings.exerciseLibrary);
+        }
+      }
+    };
+    fetchSettings();
   }, [id, isEdit]);
 
   useEffect(() => {
@@ -493,6 +505,7 @@ export default function StudentForm() {
                       </div>
                       <WorkoutEditor 
                         workout={workout} 
+                        exerciseLibrary={exerciseLibrary}
                         onUpdate={(updatedWorkout) => {
                           const newWorkouts = student.workouts?.map(w => 
                             w.id === updatedWorkout.id ? updatedWorkout : w

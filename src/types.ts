@@ -101,4 +101,12 @@ export interface AdminSettings {
   id: string;
   logoUrl?: string;
   instructorName?: string;
+  exerciseLibrary?: ExerciseLibraryItem[];
+}
+
+export interface ExerciseLibraryItem {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
 }
