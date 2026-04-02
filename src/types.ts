@@ -85,6 +85,7 @@ export interface CompletedWorkout {
 
 export interface ActiveWorkoutProgress {
   studentId: string;
+  adminId: string;
   workoutId: string;
   workoutName: string;
   startedAt: string;

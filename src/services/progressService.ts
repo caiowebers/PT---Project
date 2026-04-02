@@ -10,6 +10,7 @@ import {
   query, 
   onSnapshot,
   collectionGroup,
+  where,
   Timestamp
 } from "firebase/firestore";
 import { ActiveWorkoutProgress } from "../types";
@@ -73,10 +74,13 @@ export const progressService = {
   },
 
   /**
-   * Subscribes to all active progress across all students (used by Admin Dashboard).
+   * Subscribes to all active progress across all students for a specific admin.
    */
-  subscribeToGlobalActiveProgress: (callback: (progress: ActiveWorkoutProgress[]) => void) => {
-    const q = query(collectionGroup(db, PROGRESS_SUBCOLLECTION));
+  subscribeToGlobalActiveProgress: (adminId: string, callback: (progress: ActiveWorkoutProgress[]) => void) => {
+    const q = query(
+      collectionGroup(db, PROGRESS_SUBCOLLECTION),
+      where("adminId", "==", adminId)
+    );
     return onSnapshot(q, (snapshot) => {
       const progress = snapshot.docs.map(doc => doc.data() as ActiveWorkoutProgress);
       callback(progress);

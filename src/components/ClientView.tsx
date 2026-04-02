@@ -173,6 +173,7 @@ export default function ClientView() {
     // Persist progress
     const currentProgress = activeProgressMap[workoutId] || {
       studentId: student.id,
+      adminId: student.adminId,
       workoutId: workoutId,
       workoutName: workoutName,
       startedAt: new Date().toISOString(),
@@ -204,6 +205,7 @@ export default function ClientView() {
 
     const currentProgress = activeProgressMap[workoutId] || {
       studentId: student.id,
+      adminId: student.adminId,
       workoutId: workoutId,
       workoutName: workoutName,
       startedAt: new Date().toISOString(),

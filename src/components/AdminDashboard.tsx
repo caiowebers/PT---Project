@@ -66,11 +66,12 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = progressService.subscribeToGlobalActiveProgress((data) => {
+    if (!currentUser) return;
+    const unsubscribe = progressService.subscribeToGlobalActiveProgress(currentUser.uid, (data) => {
       setGlobalActiveProgress(data);
     });
     return () => unsubscribe();
-  }, []);
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     if (selectedStudentForProgress) {

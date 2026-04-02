@@ -32,6 +32,11 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == ownerId;
     }
 
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == "caioweber1@gmail.com" && request.auth.token.email_verified == true);
+    }
+
     function isValidStudent(data) {
       return data.keys().hasAll(['id', 'adminId', 'shareSlug', 'name']) &&
              data.id is string &&
@@ -59,6 +64,20 @@ service cloud.firestore {
              data.id is string &&
              (!('logoUrl' in data) || data.logoUrl is string) &&
              (!('instructorName' in data) || data.instructorName is string);
+    }
+
+    function isValidActiveProgress(data) {
+      return data.keys().hasAll(['studentId', 'adminId', 'workoutId', 'workoutName', 'startedAt', 'lastUpdated', 'completedExercises', 'difficulties', 'personalObservations', 'status']) &&
+             data.studentId is string &&
+             data.adminId is string &&
+             data.workoutId is string &&
+             data.workoutName is string &&
+             data.startedAt is string &&
+             data.lastUpdated is string &&
+             data.completedExercises is list &&
+             data.difficulties is string &&
+             data.personalObservations is string &&
+             data.status == 'in-progress';
     }
 
     // Users collection
@@ -90,6 +109,18 @@ service cloud.firestore {
         request.resource.data.shareSlug == resource.data.shareSlug &&
         request.resource.data.adminId == resource.data.adminId
       );
+
+      // Active Progress subcollection
+      match /activeProgress/{workoutId} {
+        allow read: if true;
+        allow write: if isValidActiveProgress(request.resource.data);
+        allow delete: if true; // Allow clearing progress when finished
+      }
+    }
+
+    // Collection Group for Active Progress
+    match /{path=**}/activeProgress/{workoutId} {
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.adminId;
     }
 
     // Aulas collection
