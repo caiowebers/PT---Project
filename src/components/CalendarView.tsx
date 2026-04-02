@@ -17,7 +17,8 @@ import {
   Clock3,
   Sun,
   Moon,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
 import { format, addHours, parseISO, startOfWeek, addDays, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -39,8 +40,17 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ClassSession | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), i));
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
+
+  const nextWeek = () => setCurrentWeekStart(prev => addDays(prev, 7));
+  const prevWeek = () => setCurrentWeekStart(prev => addDays(prev, -7));
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentWeekStart(startOfWeek(today, { weekStartsOn: 1 }));
+    setSelectedDate(today);
+  };
 
   const filteredSessions = sessions.filter(session => {
     const sessionDate = parseISO(session.start);
@@ -191,6 +201,44 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
           newSession.googleEventId
         );
       }
+
+      // Automatically update student workout history based on status
+      const currentHistory = student.workoutHistory || [];
+      const historyIndex = currentHistory.findIndex(h => h.sessionId === newSession.id);
+
+      if (formData.status === 'completed') {
+        if (historyIndex === -1) {
+          const workout = student.workouts.find(w => w.name === formData.workoutTitle) || student.workouts[0];
+          const completedWorkout: any = {
+            id: uuidv4(),
+            workoutId: workout?.id || "manual",
+            workoutName: formData.workoutTitle,
+            date: formData.start,
+            feedback: formData.notes || "Aula concluída via agenda",
+            rating: 5,
+            exercisesCompleted: workout?.exercises.map(e => e.id) || [],
+            status: 'completed',
+            sessionId: newSession.id
+          };
+          
+          await storageService.updateStudentWorkoutHistory(student.id, [...currentHistory, completedWorkout]);
+        } else {
+          // Update existing history entry if session details changed
+          const updatedHistory = [...currentHistory];
+          updatedHistory[historyIndex] = {
+            ...updatedHistory[historyIndex],
+            workoutName: formData.workoutTitle,
+            date: formData.start,
+            feedback: formData.notes || updatedHistory[historyIndex].feedback
+          };
+          await storageService.updateStudentWorkoutHistory(student.id, updatedHistory);
+        }
+      } else if (historyIndex !== -1) {
+        // If status changed from completed to something else, remove from history
+        const updatedHistory = currentHistory.filter(h => h.sessionId !== newSession.id);
+        await storageService.updateStudentWorkoutHistory(student.id, updatedHistory);
+      }
+
       toast.success(selectedEvent ? "Aula atualizada!" : "Aula agendada!");
       setIsModalOpen(false);
     } catch (error: any) {
@@ -211,6 +259,16 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
       if (selectedEvent.googleEventId && googleCalendarService.getAccessToken()) {
         await googleCalendarService.deleteEvent(selectedEvent.googleEventId);
       }
+      
+      // If it was completed, remove from history
+      if (selectedEvent.status === 'completed') {
+        const student = students.find(s => s.id === selectedEvent.studentId);
+        if (student && student.workoutHistory) {
+          const updatedHistory = student.workoutHistory.filter(h => h.sessionId !== selectedEvent.id);
+          await storageService.updateStudentWorkoutHistory(student.id, updatedHistory);
+        }
+      }
+
       await storageService.deleteSession(selectedEvent.id);
       toast.success("Aula excluída");
       setIsModalOpen(false);
@@ -276,33 +334,73 @@ export default function CalendarView({ isAdmin = false, studentId, openForStuden
       </div>
 
       {/* Weekly Bar */}
-      <div className="flex justify-between items-center bg-white/50 backdrop-blur-sm p-2 rounded-[32px] border border-gray-100">
-        {weekDays.map((date) => {
-          const isSelected = isSameDay(date, selectedDate);
-          const isToday = isSameDay(date, new Date());
-          
-          return (
-            <button
-              key={date.toISOString()}
-              onClick={() => setSelectedDate(date)}
-              className={`flex flex-col items-center justify-center w-12 h-16 rounded-2xl transition-all ${
-                isSelected 
-                  ? "bg-black text-white shadow-lg scale-110" 
-                  : "hover:bg-gray-100 text-gray-400"
-              }`}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={prevWeek}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm active:scale-95 group"
+              title="Semana Anterior"
             >
-              <span className={`text-[10px] font-bold uppercase tracking-widest ${isSelected ? "text-gray-400" : "text-gray-400"}`}>
-                {format(date, "eee", { locale: ptBR })}
-              </span>
-              <span className="text-lg font-black mt-1">
-                {format(date, "d")}
-              </span>
-              {isToday && !isSelected && (
-                <div className="w-1 h-1 bg-black rounded-full mt-1" />
-              )}
+              <ChevronLeft className="w-4 h-4 text-gray-400 group-hover:text-gym-red transition-colors" />
+              <span className="hidden md:inline">Semana Anterior</span>
             </button>
-          );
-        })}
+            
+            <button 
+              onClick={goToToday}
+              className="px-5 py-2.5 text-sm font-bold bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-200 transition-all active:scale-95"
+            >
+              Hoje
+            </button>
+
+            <button 
+              onClick={nextWeek}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm active:scale-95 group"
+              title="Próxima Semana"
+            >
+              <span className="hidden md:inline">Próxima Semana</span>
+              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gym-red transition-colors" />
+            </button>
+          </div>
+          
+          <div className="text-right">
+            <span className="text-sm font-black text-gray-900 uppercase tracking-widest block leading-none">
+              {format(currentWeekStart, "MMMM", { locale: ptBR })}
+            </span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 block">
+              {format(currentWeekStart, "yyyy")}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center bg-white/50 backdrop-blur-sm p-2 rounded-[32px] border border-gray-100">
+          {weekDays.map((date) => {
+            const isSelected = isSameDay(date, selectedDate);
+            const isToday = isSameDay(date, new Date());
+            
+            return (
+              <button
+                key={date.toISOString()}
+                onClick={() => setSelectedDate(date)}
+                className={`flex flex-col items-center justify-center w-12 h-16 rounded-2xl transition-all ${
+                  isSelected 
+                    ? "bg-black text-white shadow-lg scale-110" 
+                    : "hover:bg-gray-100 text-gray-400"
+                }`}
+              >
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${isSelected ? "text-gray-400" : "text-gray-400"}`}>
+                  {format(date, "eee", { locale: ptBR })}
+                </span>
+                <span className="text-lg font-black mt-1">
+                  {format(date, "d")}
+                </span>
+                {isToday && !isSelected && (
+                  <div className="w-1 h-1 bg-black rounded-full mt-1" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Sessions List - iOS World Time Style */}

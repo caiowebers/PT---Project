@@ -45,9 +45,11 @@ function SortableExerciseItem({
   setSearchTerms,
   isHighlighted,
   accentColor,
-  exerciseLibrary
+  exerciseLibrary,
+  muscles
 }: any) {
   const [showInfo, setShowInfo] = useState(false);
+  const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
   const {
     attributes,
     listeners,
@@ -132,8 +134,8 @@ function SortableExerciseItem({
 
       {/* Search & Suggestions Row */}
       <div className="relative">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex flex-col md:flex-row items-center gap-2">
+          <div className="relative flex-1 w-full">
             <Search className="absolute w-3.5 h-3.5 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
             <input 
               type="text" 
@@ -141,12 +143,27 @@ function SortableExerciseItem({
               onChange={e => {
                 const term = (e.target as HTMLInputElement).value;
                 setSearchTerms(prev => ({ ...prev, [exercise.id]: term }));
-                handleSearch(exercise.id, term);
+                handleSearch(exercise.id, term, selectedMuscle);
               }}
               placeholder="Pesquisar exercício na biblioteca..."
               className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-9 pr-10 focus:ring-1 focus:ring-black/5 focus:border-black text-xs text-gray-700 transition-all"
             />
           </div>
+          
+          <select
+            value={selectedMuscle || ""}
+            onChange={e => {
+              const muscle = e.target.value || null;
+              setSelectedMuscle(muscle);
+              handleSearch(exercise.id, searchTerms[exercise.id] || "", muscle);
+            }}
+            className="w-full md:w-auto bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-[10px] font-black uppercase tracking-widest text-gray-500 focus:ring-1 focus:ring-black/5 focus:border-black transition-all cursor-pointer"
+          >
+            <option value="">Todos os Músculos</option>
+            {muscles.map((m: string) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
         </div>
 
         {/* Suggestions Dropdown */}
@@ -317,8 +334,8 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
   );
 
   const muscles = useMemo(() => {
-    const categories = exerciseLibrary.map(ex => ex.category);
-    return Array.from(new Set(categories)).sort();
+    const groups = exerciseLibrary.map(ex => ex.muscleGroup || ex.category);
+    return Array.from(new Set(groups)).sort();
   }, [exerciseLibrary]);
 
   useEffect(() => {
@@ -328,17 +345,22 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     }
   }, [highlightedId]);
 
-  const handleGlobalSearch = (term: string) => {
+  const handleGlobalSearch = (term: string, muscle: string | null = libraryMuscle) => {
     setGlobalSearchTerm(term);
-    if (term.length < 1) {
+    if (term.length < 1 && !muscle) {
       setGlobalSuggestions([]);
       return;
     }
     
-    const filtered = exerciseLibrary.filter(ex => 
-      ex.name.toLowerCase().includes(term.toLowerCase()) ||
-      ex.category.toLowerCase().includes(term.toLowerCase())
-    );
+    const filtered = exerciseLibrary.filter(ex => {
+      const matchesTerm = term.length < 1 || 
+        ex.name.toLowerCase().includes(term.toLowerCase()) ||
+        (ex.muscleGroup || ex.category).toLowerCase().includes(term.toLowerCase());
+      
+      const matchesMuscle = !muscle || (ex.muscleGroup || ex.category) === muscle;
+      
+      return matchesTerm && matchesMuscle;
+    });
     setGlobalSuggestions(filtered);
   };
 
@@ -466,16 +488,21 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
     }
   };
 
-  const handleSearch = (id: string, term: string) => {
-    if (term.length < 1) {
+  const handleSearch = (id: string, term: string, muscle: string | null = null) => {
+    if (term.length < 1 && !muscle) {
       setSuggestions(prev => ({ ...prev, [id]: [] }));
       return;
     }
 
-    const filtered = exerciseLibrary.filter(ex => 
-      ex.name.toLowerCase().includes(term.toLowerCase()) ||
-      ex.category.toLowerCase().includes(term.toLowerCase())
-    );
+    const filtered = exerciseLibrary.filter(ex => {
+      const matchesTerm = term.length < 1 || 
+        ex.name.toLowerCase().includes(term.toLowerCase()) ||
+        (ex.muscleGroup || ex.category).toLowerCase().includes(term.toLowerCase());
+      
+      const matchesMuscle = !muscle || (ex.muscleGroup || ex.category) === muscle;
+      
+      return matchesTerm && matchesMuscle;
+    });
     setSuggestions(prev => ({ ...prev, [id]: filtered }));
   };
 
@@ -559,7 +586,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                       >
                         <div>
                           <p className="text-xs font-bold text-gray-900 group-hover:text-black transition-colors">{suggestion.name}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{suggestion.category}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{suggestion.muscleGroup || suggestion.category}</p>
                         </div>
                         <Plus className="w-4 h-4 text-gray-300 group-hover:text-black" />
                       </button>
@@ -573,7 +600,11 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
               {muscles.map(m => (
                 <button
                   key={m}
-                  onClick={() => setLibraryMuscle(libraryMuscle === m ? null : m)}
+                  onClick={() => {
+                    const newMuscle = libraryMuscle === m ? null : m;
+                    setLibraryMuscle(newMuscle);
+                    handleGlobalSearch(globalSearchTerm, newMuscle);
+                  }}
                   className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border ${
                     libraryMuscle === m 
                       ? 'bg-black text-white border-black shadow-sm' 
@@ -630,6 +661,7 @@ export default function WorkoutEditor({ workout, onUpdate, accentColor = "var(--
                   isHighlighted={exercise.id === highlightedId}
                   accentColor={accentColor}
                   exerciseLibrary={exerciseLibrary}
+                  muscles={muscles}
                 />
               ))}
             </div>

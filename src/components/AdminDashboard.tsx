@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
-import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar, AlertTriangle, Beaker, Fingerprint, Star, MessageSquare, X, CalendarDays, Settings, Image as ImageIcon, History as HistoryIcon, CheckCircle2 } from "lucide-react";
+import { Users, Plus, LogOut, Search, Share2, Edit2, Trash2, ChevronRight, Activity, TrendingUp, Calendar, AlertTriangle, Beaker, Fingerprint, Star, MessageSquare, X, CalendarDays, Settings, Image as ImageIcon, History as HistoryIcon, CheckCircle2, Target } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { toast } from "sonner";
 import StudentForm from "./StudentForm";
 import { Student, Workout, AdminSettings, ExerciseLibraryItem } from "../types";
@@ -22,7 +25,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedStudentForProgress, setSelectedStudentForProgress] = useState<Student | null>(null);
-  const [progressTab, setProgressTab] = useState<"metrics" | "history">("metrics");
+  const [progressTab, setProgressTab] = useState<"metrics" | "history" | "evaluations">("metrics");
   const [activeTab, setActiveTab] = useState<"students" | "workouts" | "agenda" | "settings">("students");
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
@@ -493,15 +496,23 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                             placeholder="Ex: Peito"
                             className="flex-1 p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
                           />
+                          <input 
+                            id="new-exercise-muscle"
+                            type="text"
+                            placeholder="Ex: Peitoral Maior"
+                            className="flex-1 p-3 bg-white border rounded-xl border-gray-200 focus:border-black focus:ring-2 focus:ring-black/5 outline-none text-gray-900 shadow-sm"
+                          />
                           <button 
                             onClick={() => {
                               const nameInput = document.getElementById('new-exercise-name') as HTMLInputElement;
                               const categoryInput = document.getElementById('new-exercise-category') as HTMLInputElement;
+                              const muscleInput = document.getElementById('new-exercise-muscle') as HTMLInputElement;
                               if (nameInput.value && categoryInput.value) {
                                 const newItem = {
                                   id: crypto.randomUUID(),
                                   name: nameInput.value,
-                                  category: categoryInput.value
+                                  category: categoryInput.value,
+                                  muscleGroup: muscleInput.value || categoryInput.value
                                 };
                                 setAdminSettings(prev => {
                                   const library = prev?.exerciseLibrary || [];
@@ -509,6 +520,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                                 });
                                 nameInput.value = '';
                                 categoryInput.value = '';
+                                muscleInput.value = '';
                                 toast.success("Exercício adicionado à biblioteca!");
                               }
                             }}
@@ -526,7 +538,9 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                           <div key={item.id} className="p-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
                             <div>
                               <p className="text-sm font-bold text-gray-900">{item.name}</p>
-                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{item.category}</p>
+                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                {item.category} {item.muscleGroup && item.muscleGroup !== item.category && `• ${item.muscleGroup}`}
+                              </p>
                             </div>
                             <button 
                               onClick={() => {
@@ -616,6 +630,12 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 >
                   Histórico de Treinos
                 </button>
+                <button 
+                  onClick={() => setProgressTab("evaluations")}
+                  className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${progressTab === 'evaluations' ? 'border-gym-red text-gym-red' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
+                  Avaliações
+                </button>
               </div>
 
               <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
@@ -681,20 +701,76 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   </div>
                 </div>
 
-                {/* Evolution Chart Placeholder (Visual only) */}
-                <div className="p-6 rounded-3xl bg-gray-50 border border-gray-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-gray-900">Tendência de Peso</h4>
-                    <TrendingUp className="w-4 h-4 text-gray-900" />
+                {/* Evolution Charts */}
+                <div className="space-y-6">
+                  <div className="p-6 rounded-3xl bg-white border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-gray-900 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-gym-red" />
+                        Evolução de Peso
+                      </h4>
+                    </div>
+                    <div className="h-48 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={selectedStudentForProgress.evaluations}>
+                          <defs>
+                            <linearGradient id="colorWeightAdmin" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/>
+                              <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{fontSize: 10, fill: '#9ca3af'}} 
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(val) => val ? format(parseISO(val), 'dd/MM') : ''}
+                          />
+                          <YAxis 
+                            tick={{fontSize: 10, fill: '#9ca3af'}} 
+                            axisLine={false} 
+                            tickLine={false}
+                            domain={['dataMin - 5', 'dataMax + 5']}
+                          />
+                          <Tooltip 
+                            contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                            labelFormatter={(val) => val ? format(parseISO(val), 'dd/MM/yyyy') : ''}
+                          />
+                          <Area type="monotone" dataKey="weight" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorWeightAdmin)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                  <div className="h-24 flex items-end gap-2">
-                    {selectedStudentForProgress.evaluations.map((ev, i) => (
-                      <div 
-                        key={i} 
-                        className="flex-1 bg-gray-200 rounded-t-lg transition-all hover:bg-gray-300"
-                        style={{ height: `${(ev.weight / 150) * 100}%` }}
-                      />
-                    ))}
+
+                  <div className="p-6 rounded-3xl bg-white border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-gray-900 flex items-center gap-2">
+                        <Target className="w-4 h-4 text-gym-red" />
+                        Composição Corporal
+                      </h4>
+                    </div>
+                    <div className="h-48 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={selectedStudentForProgress.evaluations}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{fontSize: 10, fill: '#9ca3af'}} 
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(val) => val ? format(parseISO(val), 'dd/MM') : ''}
+                          />
+                          <YAxis tick={{fontSize: 10, fill: '#9ca3af'}} axisLine={false} tickLine={false} />
+                          <Tooltip 
+                            contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                            labelFormatter={(val) => val ? format(parseISO(val), 'dd/MM/yyyy') : ''}
+                          />
+                          <Line type="monotone" dataKey="bodyFat" name="Gordura (%)" stroke="#f97316" strokeWidth={3} dot={{r: 4, fill: '#f97316'}} />
+                          <Line type="monotone" dataKey="muscleMass" name="Massa Muscular (kg)" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 </div>
               </>
@@ -702,47 +778,128 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <div className="space-y-4">
                   {selectedStudentForProgress.workoutHistory && selectedStudentForProgress.workoutHistory.length > 0 ? (
                     selectedStudentForProgress.workoutHistory.map((session) => (
-                      <div key={session.id} className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
+                      <div key={session.id} className="p-6 rounded-[32px] bg-white border border-gray-100 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-bold text-gray-900">{session.workoutName}</h4>
-                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                              {session.date}
+                            <h4 className="font-bold text-gray-900 text-lg">{session.workoutName}</h4>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                              {format(parseISO(session.date), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                             </p>
                           </div>
-                          <div className="bg-green-50 text-green-600 p-2 rounded-full">
-                            <CheckCircle2 className="w-4 h-4" />
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star 
+                                key={star} 
+                                className={`w-3 h-3 ${star <= (session.rating || 5) ? "fill-black text-black" : "text-gray-200"}`} 
+                              />
+                            ))}
                           </div>
                         </div>
                         
-                        {session.feedback && (
-                          <div className="bg-gray-50 rounded-xl p-3 mb-3">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Feedback do Aluno</p>
-                            <p className="text-xs text-gray-600 italic">"{session.feedback}"</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-gray-50 rounded-2xl p-3">
+                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Exercícios</div>
+                            <div className="text-sm font-bold text-gray-900">{session.exercisesCompleted.length} concluídos</div>
                           </div>
-                        )}
-                        
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            {session.exercisesCompleted.length} exercícios concluídos
-                          </span>
-                          {session.rating && (
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star 
-                                  key={star} 
-                                  className={`w-3 h-3 ${star <= session.rating! ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} 
-                                />
-                                ))}
+                          {session.skippedExercises && session.skippedExercises.length > 0 && (
+                            <div className="bg-red-50 rounded-2xl p-3">
+                              <div className="text-[9px] font-bold text-red-400 uppercase tracking-widest mb-1">Pulados</div>
+                              <div className="text-sm font-bold text-red-900">{session.skippedExercises.length} exercícios</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {(session.difficulties || session.personalObservations || session.feedback) && (
+                          <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                            {session.difficulties && (
+                              <div>
+                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Dificuldades / O que pulou</div>
+                                <p className="text-xs text-gray-600 italic mt-1">"{session.difficulties}"</p>
+                              </div>
+                            )}
+                            {session.personalObservations && (
+                              <div>
+                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Observações do Aluno</div>
+                                <p className="text-xs text-gray-600 italic mt-1">"{session.personalObservations}"</p>
+                              </div>
+                            )}
+                            {session.feedback && (
+                              <div>
+                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Feedback Geral</div>
+                                <p className="text-xs text-gray-600 italic mt-1">"{session.feedback}"</p>
                               </div>
                             )}
                           </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                      <div className="p-12 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                        <HistoryIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 font-medium">Nenhum treino concluído ainda.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {progressTab === "evaluations" && (
+                  <div className="space-y-4">
+                    {selectedStudentForProgress.evaluations && selectedStudentForProgress.evaluations.length > 0 ? (
+                      [...selectedStudentForProgress.evaluations].reverse().map((ev, i) => (
+                        <div key={i} className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-gym-red" />
+                              <p className="text-sm font-bold text-gray-900">
+                                {format(parseISO(ev.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                              </p>
+                            </div>
+                            <div className="px-3 py-1 bg-gray-100 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-500">
+                              Avaliação #{selectedStudentForProgress.evaluations.length - i}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-gray-50 p-3 rounded-xl">
+                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Peso</p>
+                              <p className="text-sm font-bold text-gray-900">{ev.weight}kg</p>
+                            </div>
+                            <div className="bg-gray-50 p-3 rounded-xl">
+                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">% Gordura</p>
+                              <p className="text-sm font-bold text-gray-900">{ev.bodyFat || '--'}%</p>
+                            </div>
+                            <div className="bg-gray-50 p-3 rounded-xl">
+                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Massa Muscular</p>
+                              <p className="text-sm font-bold text-gray-900">{ev.muscleMass || '--'}kg</p>
+                            </div>
+                            <div className="bg-gray-50 p-3 rounded-xl">
+                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">IMC</p>
+                              <p className="text-sm font-bold text-gray-900">{ev.bmi || '--'}</p>
+                            </div>
+                          </div>
+                          
+                          {(ev.bmr || ev.maxHr) && (
+                            <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-2 gap-4">
+                              {ev.bmr && (
+                                <div className="flex items-center gap-2">
+                                  <Activity className="w-3 h-3 text-gray-400" />
+                                  <span className="text-[10px] text-gray-500 font-medium">TBM: <span className="text-gray-900 font-bold">{ev.bmr} kcal</span></span>
+                                </div>
+                              )}
+                              {ev.maxHr && (
+                                <div className="flex items-center gap-2">
+                                  <Activity className="w-3 h-3 text-gray-400" />
+                                  <span className="text-[10px] text-gray-500 font-medium">Fcmáx: <span className="text-gray-900 font-bold">{ev.maxHr} bpm</span></span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))
                     ) : (
                       <div className="p-12 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                        <HistoryIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500 font-medium">Nenhum treino concluído ainda.</p>
+                        <Activity className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 font-medium">Nenhuma avaliação física registada.</p>
                       </div>
                     )}
                   </div>

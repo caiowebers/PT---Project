@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Plus, Trash2, Dumbbell, Activity, Ruler, Camera, Brain, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Dumbbell, Activity, Ruler, Camera, Brain, Sparkles, Loader2, TrendingUp, Target } from "lucide-react";
 import { motion } from "motion/react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import { Student, Workout, Exercise, PhysicalEvaluation, BodyMeasurements, ClassSession, ExerciseLibraryItem } from "../types";
@@ -449,6 +450,84 @@ export default function StudentForm() {
                 </div>
               ))}
             </div>
+
+            {/* Evolution Charts */}
+            {student.evaluations && student.evaluations.length > 0 && (
+              <div className="pt-8 border-t border-gray-100 space-y-8">
+                <div className="flex items-center gap-2 text-gray-900">
+                  <TrendingUp className="w-5 h-5" />
+                  <h3 className="font-bold uppercase tracking-wider">Gráficos de Evolução</h3>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="p-6 rounded-3xl bg-gray-50 border border-gray-100">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-6 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-black" />
+                      Evolução de Peso
+                    </h4>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={student.evaluations}>
+                          <defs>
+                            <linearGradient id="colorWeightForm" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#000000" stopOpacity={0.1}/>
+                              <stop offset="95%" stopColor="#000000" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{fontSize: 10, fill: '#6b7280'}} 
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(val) => val ? format(parseISO(val), 'dd/MM') : ''}
+                          />
+                          <YAxis 
+                            tick={{fontSize: 10, fill: '#6b7280'}} 
+                            axisLine={false} 
+                            tickLine={false}
+                            domain={['dataMin - 5', 'dataMax + 5']}
+                          />
+                          <Tooltip 
+                            contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                            labelFormatter={(val) => val ? format(parseISO(val), 'dd/MM/yyyy') : ''}
+                          />
+                          <Area type="monotone" dataKey="weight" stroke="#000000" strokeWidth={3} fillOpacity={1} fill="url(#colorWeightForm)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-3xl bg-gray-50 border border-gray-100">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-6 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-black" />
+                      Composição Corporal
+                    </h4>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={student.evaluations}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{fontSize: 10, fill: '#6b7280'}} 
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(val) => val ? format(parseISO(val), 'dd/MM') : ''}
+                          />
+                          <YAxis tick={{fontSize: 10, fill: '#6b7280'}} axisLine={false} tickLine={false} />
+                          <Tooltip 
+                            contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                            labelFormatter={(val) => val ? format(parseISO(val), 'dd/MM/yyyy') : ''}
+                          />
+                          <Line type="monotone" dataKey="bodyFat" name="Gordura (%)" stroke="#f97316" strokeWidth={3} dot={{r: 4, fill: '#f97316'}} />
+                          <Line type="monotone" dataKey="muscleMass" name="Massa Muscular (kg)" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

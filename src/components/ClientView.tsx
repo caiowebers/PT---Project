@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { 
+  ChevronDown,
+  ChevronUp,
+  FileText,
   History,
   CheckCircle2,
   Check,
@@ -25,7 +28,7 @@ import { Student, ClassSession, Exercise, AdminSettings, CompletedWorkout, Worko
 import { storageService } from "../services/storageService";
 import { v4 as uuidv4 } from "uuid";
 import { wgerService } from "../services/wgerService";
-import { format, parseISO, addHours } from "date-fns";
+import { format, parseISO, addHours, startOfWeek, endOfWeek, isSameWeek, isPast, isToday, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   LineChart, 
@@ -50,9 +53,13 @@ export default function ClientView() {
   const [generatingDesc, setGeneratingDesc] = useState<Record<string, boolean>>({});
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
   const [workoutFeedback, setWorkoutFeedback] = useState("");
+  const [skippedExercises, setSkippedExercises] = useState<Record<string, string[]>>({});
+  const [difficulties, setDifficulties] = useState<Record<string, string>>({});
+  const [personalObservations, setPersonalObservations] = useState<Record<string, string>>({});
+  const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
+  const [expandedWorkouts, setExpandedWorkouts] = useState<Record<string, boolean>>({});
   const [isFinishing, setIsFinishing] = useState<string | null>(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
-  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [requestData, setRequestData] = useState({
     date: format(new Date(), "yyyy-MM-dd"),
     time: "09:00",
@@ -60,6 +67,12 @@ export default function ClientView() {
   });
   const [isRequesting, setIsRequesting] = useState(false);
   
+  useEffect(() => {
+    // Expand current week by default
+    const currentWeekKey = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+    setExpandedWeeks({ [currentWeekKey]: true });
+  }, []);
+
   useEffect(() => {
     let unsubscribeSessions: (() => void) | null = null;
 
@@ -116,22 +129,6 @@ export default function ClientView() {
     }
   };
 
-  const handleGenerateInsights = async () => {
-    if (!student) return;
-    setIsGeneratingInsights(true);
-    try {
-      const insights = await wgerService.generateHealthInsights(student);
-      setStudent(prev => prev ? ({ ...prev, healthInsights: insights }) : null);
-      await storageService.updateStudentHealthInsights(student.id, insights);
-      toast.success("Insights de saúde gerados com sucesso!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao gerar insights.");
-    } finally {
-      setIsGeneratingInsights(false);
-    }
-  };
-
   const toggleExercise = (exerciseId: string) => {
     setCompletedExercises(prev => ({
       ...prev,
@@ -139,7 +136,22 @@ export default function ClientView() {
     }));
   };
 
-  const finishWorkout = async (workout: Workout) => {
+  const groupSessionsByWeek = (sessions: ClassSession[]) => {
+    const groups: Record<string, ClassSession[]> = {};
+    
+    sessions.forEach(session => {
+      const start = parseISO(session.start);
+      const weekStart = startOfWeek(start, { weekStartsOn: 1 });
+      const key = format(weekStart, "yyyy-MM-dd");
+      
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(session);
+    });
+    
+    return groups;
+  };
+
+  const finishWorkout = async (workout: Workout, sessionId?: string) => {
     if (!student) return;
     
     const completedIds = Object.entries(completedExercises)
@@ -148,12 +160,16 @@ export default function ClientView() {
       })
       .map(([id]) => id);
 
-    if (completedIds.length === 0) {
+    const skippedIds = workout.exercises
+      .filter(e => !completedExercises[e.id])
+      .map(e => e.id);
+
+    if (completedIds.length === 0 && skippedIds.length === workout.exercises.length) {
       toast.error("Marque pelo menos um exercício como concluído!");
       return;
     }
 
-    setIsFinishing(workout.id);
+    setIsFinishing(sessionId || workout.id);
     try {
       const newCompletedWorkout: CompletedWorkout = {
         id: uuidv4(),
@@ -162,15 +178,41 @@ export default function ClientView() {
         date: new Date().toISOString(),
         feedback: workoutFeedback,
         rating: 5,
-        exercisesCompleted: completedIds
+        exercisesCompleted: completedIds,
+        skippedExercises: skippedIds,
+        difficulties: difficulties[sessionId || workout.id] || "",
+        personalObservations: personalObservations[sessionId || workout.id] || "",
+        status: 'completed',
+        sessionId: sessionId
       };
 
       const updatedHistory = [newCompletedWorkout, ...(student.workoutHistory || [])];
       setStudent({ ...student, workoutHistory: updatedHistory });
       await storageService.updateStudentWorkoutHistory(student.id, updatedHistory);
       
-      setCompletedExercises({});
+      if (sessionId) {
+        await storageService.updateSessionStatus(sessionId, 'completed');
+      }
+
+      // Clear states for this specific workout/session
+      const key = sessionId || workout.id;
+      setCompletedExercises(prev => {
+        const next = { ...prev };
+        workout.exercises.forEach(e => delete next[e.id]);
+        return next;
+      });
       setWorkoutFeedback("");
+      setDifficulties(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setPersonalObservations(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+
       setIsFinishing(null);
       toast.success("Treino concluído! Bom trabalho!");
       setActiveTab("historico");
@@ -318,44 +360,6 @@ export default function ClientView() {
                 </div>
               )}
 
-              {/* AI Insights Section */}
-              <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" />
-                    Insights de Saúde (IA)
-                  </h3>
-                  <button
-                    onClick={handleGenerateInsights}
-                    disabled={isGeneratingInsights}
-                    className="flex items-center gap-2 px-4 py-1.5 bg-white text-gray-900 rounded-full text-[10px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
-                  >
-                    {isGeneratingInsights ? (
-                      <>
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Gerando...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3 h-3" />
-                        {student.healthInsights ? "Atualizar IA" : "Gerar com IA"}
-                      </>
-                    )}
-                  </button>
-                </div>
-                {student.healthInsights ? (
-                  <div className="text-sm text-gray-900 leading-relaxed space-y-2">
-                    {student.healthInsights.split('\n').map((line, i) => (
-                      <p key={i}>{line}</p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic">
-                    Clique no botão acima para gerar insights de saúde baseados nos seus dados.
-                  </p>
-                )}
-              </div>
-
               {/* Charts Section */}
               <div className="space-y-6">
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
@@ -441,104 +445,189 @@ export default function ClientView() {
               <div className="flex items-center justify-between px-2">
                 <h2 className="text-lg font-bold text-gray-800">Meu Treino</h2>
               </div>
+
+              {/* Weekly Tracker */}
+              {(() => {
+                const currentWeekKey = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+                const weekSessions = sessions.filter(s => isSameWeek(parseISO(s.start), new Date(), { weekStartsOn: 1 }));
+                const completedCount = weekSessions.filter(s => s.status === 'completed').length;
+                const totalCount = weekSessions.length;
+                const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+                return totalCount > 0 ? (
+                  <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600">Tracker Semanal</h3>
+                      <span className="text-sm font-bold text-black">{completedCount}/{totalCount} treinos concluídos</span>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percentage}%` }}
+                        className="h-full bg-black"
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-right">{percentage}% concluído</p>
+                  </div>
+                ) : null;
+              })()}
               
               <div className="space-y-4">
-                {student.workouts && student.workouts.length > 0 ? student.workouts.map(workout => (
-                  <div key={workout.id} className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="font-bold text-gray-900 text-lg">{workout.name}</h3>
-                      <div className="bg-gray-100 text-gray-900 px-3 py-1 rounded-full text-xs font-bold">
-                        {workout.exercises.length} exercícios
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      {workout.exercises.map((exercise, index) => (
-                        <div key={exercise.id} className="p-4 rounded-2xl bg-gray-50 space-y-3">
-                          <div className="flex items-center gap-4">
-                            <button 
-                              onClick={() => toggleExercise(exercise.id)}
-                              className={`w-10 h-10 rounded-xl shadow-sm flex items-center justify-center font-bold flex-shrink-0 transition-all ${completedExercises[exercise.id] ? 'bg-green-500 text-white' : 'bg-white text-gray-400'}`}
-                            >
-                              {completedExercises[exercise.id] ? <Check className="w-5 h-5" /> : index + 1}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <div className={`font-bold text-sm truncate ${completedExercises[exercise.id] ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{exercise.name}</div>
-                              <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{exercise.reps} • {exercise.rest}</div>
-                            </div>
-                            <a 
-                              href={`https://www.google.com/search?q=${encodeURIComponent(exercise.name)}+exercise&tbm=isch`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-                              title="Ver Exemplo"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                          </div>
+                {Object.entries(groupSessionsByWeek(sessions))
+                  .sort((a, b) => b[0].localeCompare(a[0])) // Most recent weeks first
+                  .map(([weekKey, weekSessions]) => {
+                    const weekStart = parseISO(weekKey);
+                    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+                    const isCurrentWeek = isSameWeek(weekStart, new Date(), { weekStartsOn: 1 });
+                    
+                    return (
+                      <div key={weekKey} className="space-y-3">
+                        <button 
+                          onClick={() => setExpandedWeeks(prev => ({ ...prev, [weekKey]: !prev[weekKey] }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gray-100/50 rounded-2xl hover:bg-gray-100 transition-all"
+                        >
+                          <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">
+                            Semana {format(weekStart, "d 'a' d 'de' MMMM", { locale: ptBR })}
+                            {isCurrentWeek && <span className="ml-2 text-black">(Atual)</span>}
+                          </span>
+                          {expandedWeeks[weekKey] ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                        </button>
 
-                          <div className="pt-3 border-t border-gray-200/50">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
-                                <Info className="w-3 h-3" /> Instruções IA
-                              </span>
-                              {!aiDescriptions[exercise.id] && !generatingDesc[exercise.id] && !exercise.description && (
-                                <button 
-                                  onClick={() => generateDescription(exercise)}
-                                  className="text-[9px] font-bold text-black hover:underline"
-                                >
-                                  Gerar
-                                </button>
-                              )}
-                            </div>
-                            
-                            {generatingDesc[exercise.id] ? (
-                              <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium italic">
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                Gerando instruções personalizadas...
-                              </div>
-                            ) : (aiDescriptions[exercise.id] || exercise.description) ? (
-                              <p className="text-[11px] text-gray-600 leading-relaxed italic">
-                                "{aiDescriptions[exercise.id] || exercise.description}"
-                              </p>
-                            ) : (
-                              <p className="text-[10px] text-gray-400 italic">
-                                Clique em gerar para ver como executar.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        <AnimatePresence>
+                          {expandedWeeks[weekKey] && (
+                            <motion.div 
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden space-y-4"
+                            >
+                              {weekSessions
+                                .sort((a, b) => a.start.localeCompare(b.start))
+                                .map(session => {
+                                  const sessionDate = parseISO(session.start);
+                                  const workout = student.workouts.find(w => w.name === session.workoutTitle) || student.workouts[0];
+                                  const isMissed = isPast(sessionDate) && !isToday(sessionDate) && session.status !== 'completed';
+                                  const statusColor = session.status === 'completed' ? 'bg-green-500' : isMissed ? 'bg-red-500' : 'bg-yellow-500';
+                                  const statusIcon = session.status === 'completed' ? '🟢' : isMissed ? '🔴' : '🟡';
+                                  const statusText = session.status === 'completed' ? 'Concluído' : isMissed ? 'Faltou' : 'Pendente';
 
-                    <div className="mt-8 pt-6 border-t border-gray-100">
-                      <div className="mb-4">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Feedback do Treino</label>
-                        <textarea 
-                          value={workoutFeedback}
-                          onChange={(e) => setWorkoutFeedback(e.target.value)}
-                          placeholder="Como foi o treino hoje? Alguma dor ou dificuldade?"
-                          className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[80px]"
-                        />
+                                  return (
+                                    <div key={session.id} className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-50">
+                                      <button 
+                                        onClick={() => setExpandedWorkouts(prev => ({ ...prev, [session.id]: !prev[session.id] }))}
+                                        className="w-full text-left"
+                                      >
+                                        <div className="flex items-center justify-between mb-2">
+                                          <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${statusColor}`} />
+                                            <h3 className="font-bold text-gray-900 text-lg">{session.workoutTitle}</h3>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                              {format(sessionDate, "EEEE, d", { locale: ptBR })}
+                                            </span>
+                                            {expandedWorkouts[session.id] ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 mb-4">
+                                          <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                            {statusIcon} {statusText}
+                                          </span>
+                                        </div>
+                                      </button>
+
+                                      <AnimatePresence>
+                                        {expandedWorkouts[session.id] && workout && (
+                                          <motion.div 
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden pt-4 space-y-6 border-t border-gray-50"
+                                          >
+                                            <div className="space-y-3">
+                                              {workout.exercises.map((exercise, index) => (
+                                                <div key={exercise.id} className="p-4 rounded-2xl bg-gray-50 space-y-3">
+                                                  <div className="flex items-center gap-4">
+                                                    <button 
+                                                      onClick={() => toggleExercise(exercise.id)}
+                                                      className={`w-10 h-10 rounded-xl shadow-sm flex items-center justify-center font-bold flex-shrink-0 transition-all ${completedExercises[exercise.id] ? 'bg-green-500 text-white' : 'bg-white text-gray-400'}`}
+                                                    >
+                                                      {completedExercises[exercise.id] ? <Check className="w-5 h-5" /> : index + 1}
+                                                    </button>
+                                                    <div className="flex-1 min-w-0">
+                                                      <div className={`font-bold text-sm truncate ${completedExercises[exercise.id] ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{exercise.name}</div>
+                                                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{exercise.reps} • {exercise.rest}</div>
+                                                    </div>
+                                                    <a 
+                                                      href={`https://www.google.com/search?q=${encodeURIComponent(exercise.name)}+exercise&tbm=isch`}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                                                    >
+                                                      <ExternalLink className="w-4 h-4" />
+                                                    </a>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+
+                                            <div className="space-y-4 pt-4 border-t border-gray-100">
+                                              <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Dificuldades / O que pulou</label>
+                                                <textarea 
+                                                  value={difficulties[session.id] || ""}
+                                                  onChange={(e) => setDifficulties(prev => ({ ...prev, [session.id]: e.target.value }))}
+                                                  placeholder="Ex: Pulei o último exercício por falta de tempo..."
+                                                  className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[60px]"
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Observações Pessoais</label>
+                                                <textarea 
+                                                  value={personalObservations[session.id] || ""}
+                                                  onChange={(e) => setPersonalObservations(prev => ({ ...prev, [session.id]: e.target.value }))}
+                                                  placeholder="Ex: Senti um pouco de dor no ombro..."
+                                                  className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[60px]"
+                                                />
+                                              </div>
+                                              <button 
+                                                onClick={() => finishWorkout(workout, session.id)}
+                                                disabled={isFinishing === session.id}
+                                                className="w-full bg-black text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-black/20 hover:bg-gray-900 transition-all disabled:opacity-50"
+                                              >
+                                                {isFinishing === session.id ? (
+                                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                  <>
+                                                    <CheckCircle2 className="w-5 h-5" />
+                                                    Concluir Treino
+                                                  </>
+                                                )}
+                                              </button>
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </div>
+                                  );
+                                })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <button 
-                        onClick={() => finishWorkout(workout)}
-                        disabled={isFinishing === workout.id}
-                        className="w-full bg-black text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-black/20 hover:bg-gray-900 transition-all disabled:opacity-50"
-                      >
-                        {isFinishing === workout.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle2 className="w-5 h-5" />
-                            Concluir Treino
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-center text-gym-muted">
-                    Nenhum treino cadastrado.
+                    );
+                  })}
+                
+                {sessions.length === 0 && (
+                  <div className="bg-white rounded-[32px] p-12 shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-center">
+                    <CalendarIcon className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium">Nenhum treino agendado.</p>
+                    <button 
+                      onClick={() => setActiveTab("agenda")}
+                      className="mt-4 text-black font-bold text-sm hover:underline"
+                    >
+                      Agendar agora
+                    </button>
                   </div>
                 )}
               </div>
@@ -554,49 +643,129 @@ export default function ClientView() {
               className="space-y-6"
             >
               <div className="flex items-center justify-between px-2">
-                <h2 className="text-lg font-bold text-gray-800">Histórico de Treinos</h2>
+                <h2 className="text-lg font-bold text-gray-800">Relatórios e Evolução</h2>
+                <button 
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all"
+                >
+                  <FileText className="w-4 h-4" />
+                  Exportar PDF
+                </button>
               </div>
 
+              {/* Stats Overview */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total de Treinos</div>
+                  <div className="text-2xl font-black text-black">{student.workoutHistory?.length || 0}</div>
+                </div>
+                <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Adesão Média</div>
+                  <div className="text-2xl font-black text-black">
+                    {(() => {
+                      const weekSessions = sessions.filter(s => isSameWeek(parseISO(s.start), new Date(), { weekStartsOn: 1 }));
+                      const completed = weekSessions.filter(s => s.status === 'completed').length;
+                      return weekSessions.length > 0 ? Math.round((completed / weekSessions.length) * 100) : 0;
+                    })()}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Charts Section */}
+              <div className="space-y-6">
+                <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-6">Adesão Semanal</h3>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={(() => {
+                        const last4Weeks = [3, 2, 1, 0].map(weeksAgo => {
+                          const date = startOfWeek(addHours(new Date(), -weeksAgo * 7 * 24), { weekStartsOn: 1 });
+                          const weekSessions = sessions.filter(s => isSameWeek(parseISO(s.start), date, { weekStartsOn: 1 }));
+                          const completed = weekSessions.filter(s => s.status === 'completed').length;
+                          return {
+                            name: format(date, "d/MM"),
+                            completed: completed,
+                            total: weekSessions.length
+                          };
+                        });
+                        return last4Weeks;
+                      })()}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#9ca3af'}} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#9ca3af'}} />
+                        <Tooltip 
+                          contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                        />
+                        <Area type="monotone" dataKey="completed" name="Treinos Concluídos" stroke="#000" fill="rgba(0,0,0,0.05)" strokeWidth={3} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed History List */}
               <div className="space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 px-2">Histórico Detalhado</h3>
                 {student.workoutHistory && student.workoutHistory.length > 0 ? (
-                  student.workoutHistory.map((session) => (
-                    <div key={session.id} className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                  student.workoutHistory.map((workout) => (
+                    <div key={workout.id} className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-50">
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <h3 className="font-bold text-gray-900">{session.workoutName}</h3>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                            {format(parseISO(session.date), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                          <h4 className="font-bold text-gray-900">{workout.workoutName}</h4>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                            {format(parseISO(workout.date), "EEEE, d 'de' MMMM", { locale: ptBR })}
                           </p>
                         </div>
-                        <div className="bg-green-50 text-green-600 p-2 rounded-full">
-                          <CheckCircle2 className="w-5 h-5" />
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <div key={star} className={`w-1.5 h-1.5 rounded-full ${star <= (workout.rating || 5) ? 'bg-black' : 'bg-gray-200'}`} Star />
+                          ))}
                         </div>
                       </div>
                       
-                      {session.feedback && (
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Seu Feedback</p>
-                          <p className="text-xs text-gray-600 italic">"{session.feedback}"</p>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1 bg-gray-50 rounded-2xl p-3">
+                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Exercícios</div>
+                            <div className="text-xs font-bold text-gray-900">{workout.exercisesCompleted.length} concluídos</div>
+                          </div>
+                          {workout.skippedExercises && workout.skippedExercises.length > 0 && (
+                            <div className="flex-1 bg-red-50 rounded-2xl p-3">
+                              <div className="text-[9px] font-bold text-red-400 uppercase tracking-widest mb-1">Pulados</div>
+                              <div className="text-xs font-bold text-red-900">{workout.skippedExercises.length} exercícios</div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      
-                      <div className="mt-4 flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                          {session.exercisesCompleted.length} exercícios concluídos
-                        </span>
+
+                        {(workout.difficulties || workout.personalObservations || workout.feedback) && (
+                          <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                            {workout.difficulties && (
+                              <div>
+                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Dificuldades</div>
+                                <p className="text-xs text-gray-600 italic mt-1">"{workout.difficulties}"</p>
+                              </div>
+                            )}
+                            {workout.personalObservations && (
+                              <div>
+                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Observações</div>
+                                <p className="text-xs text-gray-600 italic mt-1">"{workout.personalObservations}"</p>
+                              </div>
+                            )}
+                            {workout.feedback && (
+                              <div>
+                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Feedback Geral</div>
+                                <p className="text-xs text-gray-600 italic mt-1">"{workout.feedback}"</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="bg-white rounded-[32px] p-12 shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-center">
                     <History className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                    <p className="text-gray-400 font-medium">Você ainda não concluiu nenhum treino.</p>
-                    <button 
-                      onClick={() => setActiveTab("treino")}
-                      className="mt-4 text-black font-bold text-sm hover:underline"
-                    >
-                      Começar agora
-                    </button>
+                    <p className="text-gray-400 font-medium">Nenhum treino no histórico ainda.</p>
                   </div>
                 )}
               </div>

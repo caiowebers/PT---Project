@@ -35,6 +35,7 @@ export interface Exercise {
   name: string;
   description?: string;
   category: "Ativação" | "Aquecimento" | "Principal" | "Abdominais" | "Alongamentos";
+  muscleGroup?: string;
   reps: string;
   rest: string;
   gifUrl?: string;
@@ -75,6 +76,11 @@ export interface CompletedWorkout {
   feedback: string;
   rating: number;
   exercisesCompleted: string[]; // IDs of exercises marked as done
+  skippedExercises?: string[]; // IDs of exercises skipped
+  difficulties?: string;
+  personalObservations?: string;
+  status?: 'completed' | 'pending' | 'missed';
+  sessionId?: string; // Link to ClassSession if applicable
 }
 
 export interface Student {
@@ -108,5 +114,6 @@ export interface ExerciseLibraryItem {
   id: string;
   name: string;
   category: string;
+  muscleGroup?: string;
   description?: string;
 }

@@ -270,6 +270,15 @@ export const storageService = {
     }
   },
 
+  updateSessionStatus: async (sessionId: string, status: 'pending' | 'scheduled' | 'completed' | 'cancelled') => {
+    try {
+      const docRef = doc(db, SESSIONS_COLLECTION, sessionId);
+      await updateDoc(docRef, { status });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${SESSIONS_COLLECTION}/${sessionId}`);
+    }
+  },
+
   deleteSession: async (id: string) => {
     try {
       const docRef = doc(db, SESSIONS_COLLECTION, id);
