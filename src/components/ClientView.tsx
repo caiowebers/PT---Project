@@ -48,7 +48,9 @@ export default function ClientView() {
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"saude" | "treino" | "agenda" | "historico">("agenda");
+  const [activeTab, setActiveTab] = useState<"saude" | "treino" | "agenda" | "historico">("treino");
+  const [completionDate, setCompletionDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [completionTime, setCompletionTime] = useState(format(new Date(), "HH:mm"));
   const [aiDescriptions, setAiDescriptions] = useState<Record<string, string>>({});
   const [generatingDesc, setGeneratingDesc] = useState<Record<string, boolean>>({});
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
@@ -171,11 +173,12 @@ export default function ClientView() {
 
     setIsFinishing(sessionId || workout.id);
     try {
+      const combinedDateTime = parseISO(`${completionDate}T${completionTime}`);
       const newCompletedWorkout: CompletedWorkout = {
         id: uuidv4(),
         workoutId: workout.id,
         workoutName: workout.name,
-        date: new Date().toISOString(),
+        date: combinedDateTime.toISOString(),
         feedback: workoutFeedback,
         rating: 5,
         exercisesCompleted: completedIds,
@@ -448,7 +451,6 @@ export default function ClientView() {
 
               {/* Weekly Tracker */}
               {(() => {
-                const currentWeekKey = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
                 const weekSessions = sessions.filter(s => isSameWeek(parseISO(s.start), new Date(), { weekStartsOn: 1 }));
                 const completedCount = weekSessions.filter(s => s.status === 'completed').length;
                 const totalCount = weekSessions.length;
@@ -471,8 +473,138 @@ export default function ClientView() {
                   </div>
                 ) : null;
               })()}
+
+              {/* Training Plans Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 px-2 flex items-center gap-2">
+                  <Dumbbell className="w-4 h-4 text-black" />
+                  Planos de Treino Sugeridos
+                </h3>
+                {student.workouts && student.workouts.length > 0 ? (
+                  student.workouts.map((workout) => (
+                    <div key={workout.id} className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-50">
+                      <button 
+                        onClick={() => setExpandedWorkouts(prev => ({ ...prev, [workout.id]: !prev[workout.id] }))}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-bold text-gray-900 text-lg">{workout.name}</h4>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                              {workout.exercises.length} exercícios • Foco: {workout.exercises[0]?.muscleGroup || "Geral"}
+                            </p>
+                          </div>
+                          {expandedWorkouts[workout.id] ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                        </div>
+                      </button>
+
+                      <AnimatePresence>
+                        {expandedWorkouts[workout.id] && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden pt-6 space-y-6 border-t border-gray-50 mt-4"
+                          >
+                            <div className="space-y-3">
+                              {workout.exercises.map((exercise, index) => (
+                                <div key={exercise.id} className="p-4 rounded-2xl bg-gray-50 space-y-3">
+                                  <div className="flex items-center gap-4">
+                                    <button 
+                                      onClick={() => toggleExercise(exercise.id)}
+                                      className={`w-10 h-10 rounded-xl shadow-sm flex items-center justify-center font-bold flex-shrink-0 transition-all ${completedExercises[exercise.id] ? 'bg-green-500 text-white' : 'bg-white text-gray-400'}`}
+                                    >
+                                      {completedExercises[exercise.id] ? <Check className="w-5 h-5" /> : index + 1}
+                                    </button>
+                                    <div className="flex-1 min-w-0">
+                                      <div className={`font-bold text-sm truncate ${completedExercises[exercise.id] ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{exercise.name}</div>
+                                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{exercise.reps} • {exercise.rest}</div>
+                                    </div>
+                                    <a 
+                                      href={`https://www.google.com/search?q=${encodeURIComponent(exercise.name)}+exercise&tbm=isch`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                    </a>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-gray-100">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Data de Conclusão</label>
+                                  <input 
+                                    type="date"
+                                    value={completionDate}
+                                    onChange={(e) => setCompletionDate(e.target.value)}
+                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Horário</label>
+                                  <input 
+                                    type="time"
+                                    value={completionTime}
+                                    onChange={(e) => setCompletionTime(e.target.value)}
+                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Dificuldades / O que pulou</label>
+                                <textarea 
+                                  value={difficulties[workout.id] || ""}
+                                  onChange={(e) => setDifficulties(prev => ({ ...prev, [workout.id]: e.target.value }))}
+                                  placeholder="Ex: Pulei o último exercício por falta de tempo..."
+                                  className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[60px]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Observações Pessoais</label>
+                                <textarea 
+                                  value={personalObservations[workout.id] || ""}
+                                  onChange={(e) => setPersonalObservations(prev => ({ ...prev, [workout.id]: e.target.value }))}
+                                  placeholder="Ex: Senti um pouco de dor no ombro..."
+                                  className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all min-h-[60px]"
+                                />
+                              </div>
+                              <button 
+                                onClick={() => finishWorkout(workout)}
+                                disabled={isFinishing === workout.id}
+                                className="w-full bg-black text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-black/20 hover:bg-gray-900 transition-all disabled:opacity-50"
+                              >
+                                {isFinishing === workout.id ? (
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-5 h-5" />
+                                    Concluir Treino
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-white rounded-[32px] p-12 shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-center">
+                    <Dumbbell className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium">Nenhum plano de treino sugerido ainda.</p>
+                  </div>
+                )}
+              </div>
               
               <div className="space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600 px-2 flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-black" />
+                  Aulas Agendadas
+                </h3>
                 {Object.entries(groupSessionsByWeek(sessions))
                   .sort((a, b) => b[0].localeCompare(a[0])) // Most recent weeks first
                   .map(([weekKey, weekSessions]) => {
@@ -572,6 +704,26 @@ export default function ClientView() {
                                             </div>
 
                                             <div className="space-y-4 pt-4 border-t border-gray-100">
+                                              <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Data de Conclusão</label>
+                                                  <input 
+                                                    type="date"
+                                                    value={completionDate}
+                                                    onChange={(e) => setCompletionDate(e.target.value)}
+                                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all"
+                                                  />
+                                                </div>
+                                                <div>
+                                                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Horário</label>
+                                                  <input 
+                                                    type="time"
+                                                    value={completionTime}
+                                                    onChange={(e) => setCompletionTime(e.target.value)}
+                                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-black/5 transition-all"
+                                                  />
+                                                </div>
+                                              </div>
                                               <div>
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Dificuldades / O que pulou</label>
                                                 <textarea 
